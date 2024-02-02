@@ -420,16 +420,33 @@ class M77RaspberryWIFI {
         return new Promise(async (resolve, reject) => {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
-            let status = await this.#nmcli(`device status | awk '$1 == "${this.#device}"'`)
+            let status = await this.#nmcli(`device show ${this.#device}`)
             if (status === false) { resolve({ success: false, msg: `Failed to get the status of interface "${this.#device}"`, data: {} }); return false }
 
-            const [device, type, connection_status, ssid] = status.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)[0].split('|')
+            const statusArr = status.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
+
+            let hwaddr = statusArr.filter(data => data.includes('GENERAL.HWADDR'))[0].split('|')[1].replace("--", '').trim()
+            let mtu = statusArr.filter(data => data.includes('GENERAL.MTU'))[0].split('|')[1].replace("--", '').trim()
+            let state_code = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[0].trim()
+            let state_str = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[1].replace(/\(([^)]+)\)/, '$1').trim()
+            let ssid = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim()
+            let ipaddres = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim()
+            let gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() || ''
+            let dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1])
 
             const statusJSON = {
-                device,
-                connected: connection_status === "connected" ? true : false,
-                connection_status,
-                ssid
+                device: this.#device,
+                connected: state_str === "connected" ? true : false,
+                state_code: parseInt(state_code),
+                state_str,
+                ssid,
+                device_info: {
+                    hwaddr,
+                    mtu,
+                    ipaddres,
+                    gateway,
+                    dns
+                }
             }
 
             if (statusJSON.connected && withConnectionInfo) {
@@ -441,6 +458,7 @@ class M77RaspberryWIFI {
                     } catch (e) { }
                 }
             }
+            
             resolve({ success: true, msg: `Got interface status "${this.#device}"`, data: statusJSON })
         })
     }

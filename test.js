@@ -32,8 +32,8 @@ async function init() {
     console.log(status)
     
     console.log("\n\nStatus with connection info:")
-    const statusWC = await wifi.status(true)
-    console.log(statusWC)
+    const statusCI = await wifi.status(true)
+    console.log(statusCI)
 
     /*
     console.log("\n\Connected?:")
