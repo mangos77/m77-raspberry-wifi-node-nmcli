@@ -94,40 +94,7 @@ class M77RaspberryWIFI {
             }
         })
     }
-
-    /*
-    #validIPaddr(ip = "") {
-        if (typeof ip !== "string") return false
-
-        const result = ip.search(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/)
-        return result < 0 ? false : true
-    }
-    */
-
-    /*
-    #waitConnection() {
-        return new Promise(async (resolve, reject) => {
-            const startTime = new Date()
-            let hasConnection = { data: { has_connection: false } }
-            do {
-                let theTime = new Date() - startTime
-                if (theTime > this.#connect_timeout) {
-                    this.#debug(`The waiting time to connect Wi-Fi network scan has been exceeded (${this.#connect_timeout} milliseconds), this waiting time can be set in the init function as a parameter of the json object { connect_timeout: [in_milliseconds] }`)
-                    resolve(false)
-                    return false
-                }
-                hasConnection = await this.hasConnection()
-
-                if (hasConnection.data.has_connection === true) {
-                    this.#debug(`The wait for connection has been ${theTime} milliseconds`)
-                    resolve(true)
-                    return false
-                }
-                await this.#sleep(250)
-            } while (hasConnection.data.has_connection === false)
-        })
-    }
-    */
+ 
 
     /*
     #removeNetwork(idNet) {
@@ -144,22 +111,6 @@ class M77RaspberryWIFI {
     }
     */
 
-    /*
-    #reconfigure() {
-        return new Promise(async (resolve, reject) => {
-            if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
-
-            const reconfigure = await this.#wpa('reconfigure')
-
-            if (reconfigure !== "OK") {
-                this.#debug(`Could not reconfigure interface ${this.#device}`)
-                resolve(false); return false
-            }
-            this.#debug(`Interface ${this.#device} has been reconfigured`)
-            resolve(true)
-        })
-    }
-    */
 
     /*
     #removeAllNetworks() {
@@ -496,6 +447,31 @@ class M77RaspberryWIFI {
     }
     */
 
+    savedNetworks() {
+        return new Promise(async (resolve, reject) => {
+            if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
+
+            const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c | grep ' wifi '`)
+
+            if (saved === false) { resolve({ success: false, msg: `It was not possible to obtain the list of saved Wi-Fi networks in inteface "${this.#device}"`, data: [] }); return false }
+
+            let savedArr = saved.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
+
+            savedArr = savedArr.map(net => { 
+                return {
+                    ssid:net.trim().split("|")[0].trim(),
+                    device:net.trim().split("|")[2].replace("--", '').trim(),
+                    active:net.trim().split("|")[3].trim() === "yes"? true: false
+
+                }
+            })
+
+            resolve({ success: true, msg: `List of saved Wi-Fi networks`, data: savedArr })
+
+        })
+    }
+
+
     /*
     disconnect() {
         return new Promise(async (resolve, reject) => {
@@ -551,20 +527,6 @@ class M77RaspberryWIFI {
     }
     */
 
-    /*
-    hasConnection() {
-        return new Promise(async (resolve, reject) => {
-            if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
-
-            const status = await this.status()
-            if (status.success === false) { resolve({ success: false, msg: `Cannot determine if interface ${this.#device} is connected`, data: false }); return false }
-
-            const result = status.data.wpa_state === 'COMPLETED' && this.#validIPaddr(status.data.ip_address)
-
-            resolve({ success: true, msg: `Does interface ${this.#device} have a connection?`, data: { has_connection: result, ssid: result ? status.data.ssid : '', ip_address: result ? status.data.ip_address : '' } })
-        })
-    }
-    */
 
     scan() {
         return new Promise(async (resolve, reject) => {

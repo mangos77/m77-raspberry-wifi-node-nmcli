@@ -14,11 +14,11 @@ async function init() {
     console.log(init)
     
 
-    /*
+    
     console.log("\n\nSaved Networks:")
     const saved = await wifi.savedNetworks()
     console.log(saved)
-    */
+    
 
     /*
     console.log("\n\Remove all networks:")
@@ -34,12 +34,6 @@ async function init() {
     console.log("\n\nStatus with connection info:")
     const statusCI = await wifi.status(true)
     console.log(statusCI)
-
-    /*
-    console.log("\n\Connected?:")
-    const hasConnection = await wifi.hasConnection()
-    console.log(hasConnection)
-    */
 
     
     console.log("\n\nScan:")
