@@ -451,7 +451,7 @@ class M77RaspberryWIFI {
         return new Promise(async (resolve, reject) => {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
-            const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c | grep ' wifi '`)
+            const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c  | awk '$2 == "wifi"'`)
 
             if (saved === false) { resolve({ success: false, msg: `It was not possible to obtain the list of saved Wi-Fi networks in inteface "${this.#device}"`, data: [] }); return false }
 
