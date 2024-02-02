@@ -1,0 +1,33 @@
+{
+  "name": "m77-raspberry-wifi-node-nmcli",
+  "version": "1.0.0",
+  "description": "Module in nodejs to configure Wifi connections on Raspberry Pi (managed by nmcli)",
+  "main": "./src/m77-raspberry-wifi-node-nmcli.js",
+  "scripts": {
+    "dev": "node test"
+  },
+  "keywords": [
+    "wifi",
+    "wifi connection",
+    "nmcli",
+    "NetworkManager",
+    "raspberry",
+    "raspberry Pi",
+    "node",
+    "nodejs",
+    "node.js",
+    "rpi",
+    "raspi",
+    "linux"
+  ],
+  "author": "Ing. Carlos Yerena - mangos77",
+  "homepage": "https://github.com/mangos77/m77-raspberry-wifi-node-nmcli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mangos77/m77-raspberry-wifi-node-nmcli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mangos77/m77-raspberry-wifi-node-nmcli/issues"
+  },
+  "license": "MIT"
+}
