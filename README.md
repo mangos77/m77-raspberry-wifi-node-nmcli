@@ -9,7 +9,7 @@ It is a module that I have developed in **node.js** to configure the Wi-Fi netwo
 ___
 **Implementation of this module is available to create a full-featured API for node.js with express.**
 
-You can find it at [***api-m77-raspberry-wifi-node-nmcli***](https://github.com/mangos77/m77-raspberry-wifi-node-nmcli)
+You can find it at [***api-m77-raspberry-wifi-node-nmcli***](https://github.com/mangos77/api-m77-raspberry-wifi-node-nmcli)
 
 ___
 

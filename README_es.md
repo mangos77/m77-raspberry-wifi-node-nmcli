@@ -10,7 +10,7 @@ Es un módulo que he desarrollado en **node.js** para configurar red Wi-Fi de **
 ___
 **Está dispponible la implementación de este módulo para crear una API con todas las funcionalidades para node.js con express.**
 
-La puedes encontrar en [***api-m77-raspberry-wifi-node-nmcli***](https://github.com/mangos77/m77-raspberry-wifi-node-nmcli)
+La puedes encontrar en [***api-m77-raspberry-wifi-node-nmcli***](https://github.com/mangos77/api-m77-raspberry-wifi-node-nmcli)
 
 ___
 
