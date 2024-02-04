@@ -1,11 +1,16 @@
-# m77-raspberry-wifi-node
+# m77-raspberry-wifi-node-nmcli
 
-Es un módulo que he desarrollado en **node.js** para configurar red Wifi de **Raspberry Pi** que usa **wpa_cli** de **wpa_supplicant**.
+> **Este es el nuevo módulo para configurar redes WiFi desde nodejs**
+
+> **En versiones actuales de Raspberry OS ya no se usa wpa_cli, en cambio toda la configuración de red es por nmcli. Por esto el paquete ***m77-raspberry-wifi-node**** ya no es utilizado*
+  
+___
+Es un módulo que he desarrollado en **node.js** para configurar red Wi-Fi de **Raspberry Pi** que usa **nmcli**.
 
 ___
-**Ya está dispponible la implementación de este módulo para crear una API con todas las funcionalidades para node.js con express.**
+**Está dispponible la implementación de este módulo para crear una API con todas las funcionalidades para node.js con express.**
 
-La puedes encontrar en [***api-m77-raspberry-wifi-node***](https://github.com/mangos77/api-m77-raspberry-wifi-node)
+La puedes encontrar en [***api-m77-raspberry-wifi-node-nmcli***](https://github.com/mangos77/m77-raspberry-wifi-node-nmcli)
 
 ___
 
@@ -20,13 +25,13 @@ Espero que les sea de gran utilidad y la recomienden para que llegue a más desa
 
 ## Instalar
 ```
-npm install m77-raspberry-wifi-node
+npm install m77-raspberry-wifi-node-nmcli
 ```
 
 ## Uso
 Para poder inicializar el módulo, primero se debe de importar, crear una instancia e inicializar **(en una función asíncrona)** con la configuración deseada
 ```
-const M77RaspberryWIFI = require('m77-raspberry-wifi-node')
+const M77RaspberryWIFI = require('m77-raspberry-wifi-node-nmcli')
 const wifi = new M77RaspberryWIFI()
 
 async function start() {
@@ -49,7 +54,7 @@ Respuesta:
 {
   success: true,
   msg: 'Wi-Fi interfaces found on the system',
-  data: [ 'wlan0_ap', 'wlan0' ]
+  data: [ 'wlan0' ]
 }
 ```
 Error:
@@ -62,8 +67,6 @@ Inicializa la interfaz y opciones para poder usar los demás métodos
 opciones:
 - *device* - La interfaz que se usará - por defecto **wlan0**
 - *debugLevel* - El nivel de debug que se muestra en consola (0 - Nada, 1 - Básico, 2 - Completo) - Por defecto **2**
-- *scan_timeout* - Tiempo máximo de espera en milisegundos para escanar redes Wi-Fi - Por defecto **15000**
-- *connect_timeout* - Tiempo máximo de espera en milisegundos para escanar redes Wi-Fi - Por defecto **45000**
 
 ```
 const init = await wifi.init({ device: "wlan0", debugLevel: 0 })
@@ -72,16 +75,27 @@ console.log(init)
 
 Respuesta:
 ```
-{ success: true, msg: 'Interface wlan0 has been found on the system' }
+{
+  success: true,
+  msg: 'Interface "wlan0" has been found on the system'
+}
 ```
 
 Error:
 ```
-{ success: false, msg: `The wlan0 interface does not exist. Please execute the listInterfaces() method to get the list of available Wifi interfaces and set in init() method.` }
+{
+  success: false,
+  msg: 'The "wlaan0" interface does not exist. Please execute the listInterfaces() method to get the list of available Wifi interfaces and set in init() method.'
+}
 ```
 
-### status()
+### status(withConnectionInfo)
 Muestra el estatus de conexión en la interfaz
+Opciones:
+- *withConnectionInfo* - Si **true** muestra información adicional sobre la conexión establecida - por defecto **false**
+
+
+
 ```
 const status = await wifi.status()
 console.log(status)
@@ -92,70 +106,77 @@ Respuesta:
 ```
 {
   success: true,
-  msg: 'Got interface status wlan0',
+  msg: 'Got interface status "wlan0"',
   data: {
-    wpa_state: 'DISCONNECTED',
-    p2p_device_address: 'da:3a:e8:35:d0:b7',
-    address: 'da:3a:e8:35:d0:b7',
-    uuid: 'aefc91bf-693f-57b0-3542-eeb8bc7e495a',
-    connected: false
+    device: 'wlan0',
+    connected: false,
+    state_code: 30,
+    state_str: 'disconnected',
+    ssid: '',
+    device_info: {
+      hwaddr: 'D8:3A:DD:2D:CB:B7',
+      mtu: '1500',
+      ipaddres: '',
+      gateway: '',
+      dns: []
+    }
   }
-}
 ```
 *** Con conexión establecida***
 ```
 {
-  success: true,
-  msg: 'Got interface status wlan0',
-  data: {
-    bssid: '48:45:4e:8f:4b:e7',
-    freq: 5240,
-    ssid: 'mangos77',
-    id: 0,
-    mode: 'station',
-    pairwise_cipher: 'CCMP',
-    group_cipher: 'CCMP',
-    key_mgmt: 'WPA2-PSK',
-    wpa_state: 'COMPLETED',
-    ip_address: '192.168.68.60',
-    p2p_device_address: 'da:3a:e8:35:d0:b7',
-    address: 'da:3a:e8:35:d0:b7',
-    uuid: 'aefc91bf-693f-57b0-3542-eeb8bc7e495a',
-    ieee80211ac: '1',
-    connected: true,
-    typeGHz: '5',
-    signallevel: -34,
-    signalStrength: 4
+  "success": true,
+  "msg": "Got interface status \"wlan0\"",
+  "data": {
+    "device": "wlan0",
+    "connected": true,
+    "state_code": 100,
+    "state_str": "connected",
+    "ssid": "mangos77",
+    "device_info": {
+      "hwaddr": "D8:3A:DD:2D:CB:B7",
+      "mtu": "1500",
+      "ipaddres": "192.168.68.93",
+      "gateway": "192.168.68.1",
+      "dns": [
+        "8.8.8.8",
+        "8.8.4.4"
+      ]
+    }
   }
 }
 ```
-
-### hasConnection()
-Respuesta simple de status() que muestra si el dispositivo está conectado o no a una red Wifi
-```
-const hasConnection = await wifi.hasConnection()
-console.log(hasConnection)
-```
-
-Respuesta:
-***Conectado***
+*** Con detalles extra de conexión***
 ```
 {
-  success: true,
-  msg: 'Does interface wlan0 have a connection?',
-  data: {
-    has_connection: true,
-    ssid: 'mangos77',
-    ip_address: '192.168.1.60'
+  "success": true,
+  "msg": "Got interface status \"wlan0\"",
+  "data": {
+    "device": "wlan0",
+    "connected": true,
+    "state_code": 100,
+    "state_str": "connected",
+    "ssid": "mangos77",
+    "device_info": {
+      "hwaddr": "D8:3A:DD:2D:CB:B7",
+      "mtu": "1500",
+      "ipaddres": "192.168.68.93",
+      "gateway": "192.168.68.1",
+      "dns": [
+        "8.8.8.8",
+        "8.8.4.4"
+      ]
+    },
+    "connection_info": {
+      "bssid": "48:22:54:9D:4A:C7",
+      "ssid": "mangos77",
+      "chan": "44",
+      "band": "5 GHz",
+      "rate": "270 Mbit/s",
+      "security": "WPA2",
+      "strength": 4
+    }
   }
-}
-```
-***No conectado***
-```
-{
-  success: true,
-  msg: 'Does interface wlan0 have a connection?',
-  data: { has_connection: false, ssid: '', ip_address: '' }
 }
 ```
 
@@ -171,16 +192,35 @@ Respuesta:
 {
   success: true,
   msg: 'List of saved Wi-Fi networks',
-  data: [
-    {
-      networkid: '0',
-      ssid: 'mangos77',
-      bssid: 'any',
-      flags: '[CURRENT]'
-    },
-    ...
+  data: [ 
+    { ssid: 'mangos77', device: 'wlan0', active: true },
     ...
   ]
+}
+```
+
+### removeNetwork(ssid)
+Elimina una conexión guardada
+```
+const remove = await wifi.removeNetwork('mangos77')
+console.log(remove)
+```
+
+Respuesta:
+```
+{
+  success: true,
+  msg: 'Wi-Fi network has been removed on the system',
+  data: { ssid: 'mangos77' }
+}
+```
+
+Error:
+```
+{
+  success: false,
+  msg: 'Wi-Fi network is not in saved networks',
+  data: { ssid: 'mangos77' }
 }
 ```
 
@@ -195,17 +235,18 @@ Respuesta:
 ```
 {
   success: true,
-  msg: 'Removed all Wifi network configurations for interface wlan0'
+  msg: 'Wi-Fi networks that have been removed are',
+  data: [ 'mangos77' ]
 }
 ```
 
 
 ### scan()
-Entrega resultado de todas las redes Wifi disponibles para conectarse ordenadas por fuerza de señal.
+Entrega resultado de todas las redes Wifi disponibles para conectarse ordenadas desde la conexión guardada más reciente a la más antigua.
 
 Se agregan datos en la respuesta en cada una de las redes detectadas: 
-- **typeGHz** - (2.4, 5, etc.)
-- **signalStrength** - [1 (fuerte) - 5 (débil)]
+- **band** - (2.4 GHz o 5 GHz)
+- **strength** - [1 (débil) a 4 (Muy fuerte)]
 ```
 const scan = await wifi.scan()
 console.log(scan)
@@ -217,123 +258,20 @@ Respuesta:
   msg: 'List of scanned Wi-Fi networks was obtained',
   data: [
     {
-      "bssid": "48:22:34:7d:4c:c7",
-      "frequency": 5240,
-      "signallevel": -33,
-      "flags": "[WPA2-PSK+FT/PSK-CCMP][WPS][ESS]",
-      "open": false,
-      "ssid": "mangos77",
-      "typeGHz": "5",
-      "signalStrength": 1,
-      "current": true
+      current: false,
+      bssid: '60:C5:B2:75:E2:BE',
+      ssid: 'SG-B19****0487',
+      chan: '3',
+      band: '5 GHz',
+      rate: '270 Mbit/s',
+      security: 'WPA2',
+      strength: 4
     },
     ...
-    ...
-    {
-      "bssid": "0e:96:e6:43:44:e4",
-      "frequency": 2412,
-      "signallevel": -88,
-      "flags": "[ESS]",
-      "open": true,
-      "ssid": "My Open Net",
-      "typeGHz": "5",
-      "signalStrength": 2,
-      "current": false
-    }
   ]
 }
 ```
 
-
-### scanUniques()
-Muestra listado de todas las redes disponibles no ocultas y sin duplicados de ssid y frecuencia.
-```
-const availableUniques = await wifi.scanUniques()
-console.log(availableUniques)
-```
-
-Respuesta:
-```
-{
-  success: true,
-  msg: 'Got a list of unique and not hidden Wi-Fi networks',
-  data: [
-    {
-      bssid: '48:54:5b:9e:4a:c7',
-      frequency: 5240,
-      signallevel: -39,
-      flags: '[WPA2-PSK+FT/PSK-CCMP][WPS][ESS]',
-      open: false,
-      ssid: 'mangos77',
-      typeGHz: '5',
-      signalStrength: 4,
-      current: true
-    },
-    ...
-    {
-      bssid: '4e:23:b4:9e:4a:c6',
-      frequency: 2417,
-      signallevel: -27,
-      flags: '[WPA2-PSK+FT/PSK-CCMP][ESS]',
-      open: false,
-      ssid: 'mangos77',
-      typeGHz: '2.4',
-      signalStrength: 4,
-      current: false
-    }
-  ]
-}
-```
-
-### scanInTypes()
-Entrega las redes Wifi disponibles **agrupadas por tipo 2.4, 5, etc.**.  
-**Se entregan ordenadas en cada bloque por la fuerza de la señal**
-
-- **typeGHz** - (2.4, 5, etc.)
-- **signalStrength** - [1 (fuerte) - 5 (débil)]
-- **current** - [true | false] dependiendo si es a la red a la que se está conectado
-```
-const inTypes = await wifi.scanInTypes()
-console.log(inTypes)
-```
-
-Respuesta:
-```
-{
-  "success": true,
-  "msg": "A list grouped by type of the scanned Wi-Fi networks was obtained",
-  "data": {
-    "wifi_24": [
-      {
-        "bssid": "48:26:14:8d:4c:d8",
-        "frequency": "2417",
-        "signallevel": "-26",
-        "flags": "[WPA2-PSK+FT/PSK-CCMP][WPS][ESS]",
-        "open": false,
-        "ssid": "mangos77",
-        "typeGHz": "2.4",
-        "signalStrength": 1,
-        "current": false
-      },
-      ...
-    ],
-    "wifi_5": [
-      {
-        "bssid": "48:22:78:8e:6a:bf",
-        "frequency": "5240",
-        "signallevel": "-87",
-        "flags": "[WPA2-PSK+FT/PSK-CCMP][WPS][ESS]",
-        "open": false,
-        "ssid": "mangos77",
-        "typeGHz": "5",
-        "signalStrength": 2,
-        "current": true
-      },
-      ...    
-    ]
-  }
-}
-```
 
 ### connect(configuración)
 Método que intenta establecer conexión con una red Wifi, esto puede ser redes seguras, ocultas, abiertas o combinaciones.
@@ -342,12 +280,12 @@ Si la conexión no pudo realizarse se intenta conectar a alguna de las redes Wif
 configuración:
 - *ssid* - Nombre de la red Wifi a conectarse
 - *psk* - Contraseña de la red Wifi - **Dejar vacío en caso de red abierta**
-- *removeAllNetworks* - [true | false] Si se desea que elimine todas las redes guardadas - Por defecto **false**
+- *bssid* - Usar el bssid en caso que se deseara fijar la conexión, *o en el caso que el ssid use dos bandas y se necsite conectar a una banda determinada* - Por defecto '' 
 - *hidden* - [true | false] Para indicar si se trata o no de una red oculta - Por defecto **false**
-- *bssid* - Usar el bssid en caso que se deseara fijar la conexión, *o en el caso que el ssid use dos bandas y se necsite conectar a una banda determinada* - Por defecto '' (no ata la conexión al bssid)
+- *timeout* - Tiempo máximo en segundos para esperar la conexión a la red - Por defecto **60**
 
 ```
-const connect = await wifi.connect({ ssid: "mangos77_other", psk: "sd343dsdsss"})
+const connect = await wifi.connect({ ssid: "mangos77", psk: "ABCDE12345", bssid: "4E:22:54:9D:4A:C6", hidden: false, timeout: 45 })
 console.log(connect)
 ```
 Respuesta:
@@ -356,21 +294,16 @@ Respuesta:
 {
   success: true,
   msg: 'The Wi-Fi network has been successfully configured on interface wlan0',
-  data: {
-    milliseconds: 24851,
-    connected_to: { milliseconds: 24851, ssid: 'mangos77_other' }
-  }
+  data: { milliseconds: 3273, ssid: 'mangos77' }
 }
 ```
+
 ***No fue posible establecer la conexión***
 ```
 {
   success: false,
-  msg: 'Could not connect to SSID "mangos77_other" on interface wlan0. The interface wlan0 has been reconnected to ssid "mangos77" in 6315 milliseconds',
-  data: {
-    milliseconds: 59481,
-    connected_to: { milliseconds: 6315, ssid: 'mangos77' }
-  }
+  msg: 'Could not connect to SSID "mangos77" on interface wlan0',
+  data: { milliseconds: 25831, ssid: 'mangos77' }
 }
 ```
 
@@ -385,24 +318,5 @@ Respuesta:
 { success: true, msg: 'Interface wlan0 has been disconnected' }
 ```
 
-### reconnect()
-Intenta re-conectar a una red guardada en el sistema
-```
-const reconnect = await wifi.reconnect()
-console.log(reconnect)
-```
-Respuesta: 
-```
-{
-  success: true,
-  msg: 'The interface wlan0 has been reconnected to ssid "mangos77" in 13487 milliseconds',
-  data: { milliseconds: 13487, ssid: 'mangos77' }
-}
-```
 
-Error:
-```
-{ success: false, msg: 'Failed to reconnect interface wlan0' }
-```
-
-Espero les sea de utilidad, si encuentras algún punto de mejora o comentario, por favor hazlo :-)
+> Espero les sea de utilidad, si encuentras algún punto de mejora o comentario, por favor hazlo :-)
