@@ -177,7 +177,7 @@ class M77RaspberryWIFI {
             try { hwaddr = statusArr.filter(data => data.includes('GENERAL.HWADDR'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { mtu = statusArr.filter(data => data.includes('GENERAL.MTU'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { state_code = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[0].trim() } catch (e) { }
-            try { state_str = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[1].replace(/\(([^)]+)\)/, '$1').trim() } catch (e) { }
+            try { state_str = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[1].replace("(", '').replace(")", '').trim() } catch (e) { }
             try { ssid = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { ipaddres = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
             try { gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
@@ -260,7 +260,6 @@ class M77RaspberryWIFI {
 
             if (connect_to === false) {
                 const status = await this.status()
-                console.log(status)
                 resolve({
                     success: false,
                     msg: `Could not connect to SSID "${configValues.ssid}" on interface ${this.#device}`,
@@ -298,7 +297,6 @@ class M77RaspberryWIFI {
 
             if (reconnect_to === false) {
                 const status = await this.status()
-                console.log(status)
                 resolve({
                     success: false,
                     msg: `Could not reconnect to SSID "${configValues.ssid}" on interface ${this.#device}, because the "${configValues.ssid}" network is not in those previously saved in the system`,
@@ -385,7 +383,6 @@ class M77RaspberryWIFI {
 
             }
 
-            //console.log(scannedArrOr)
             let scannedArrOrUnique = scannedArrOr.filter((net, index, self) =>
                 index === self.findIndex((r) => r.ssid === net.ssid && r.band === net.band && net.ssid !== "--")
             )
