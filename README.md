@@ -304,7 +304,7 @@ Response:
 }
 ```
 
-### reconnect(configuración)
+### reconnect(config)
 Method that attempts to reconnect with a previously saved Wi-Fi network.
 
 setting:
