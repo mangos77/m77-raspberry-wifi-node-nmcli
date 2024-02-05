@@ -274,7 +274,7 @@ Response:
 ### connect(config)
 Method that attempts to establish a connection with a Wi-Fi network, this can be secure, hidden, open networks or combinations.
 If the connection could not be made, an attempt is made to connect to one of the Wi-Fi networks saved in the system that are available.
-**This action can take a long time per connection attempt, the maximum timeout for each connection attempt is defined in init() with the *connect_timeout* configuration parameter **
+
 setting:
 - *ssid* - Name of the Wi-Fi network to connect
 - *psk* - Wifi network password - **Leave empty in case of open network**
@@ -301,6 +301,37 @@ Response:
   success: false,
   msg: 'Could not connect to SSID "mangos77" on interface wlan0',
   data: { milliseconds: 25831, ssid: 'mangos77' }
+}
+```
+
+### reconnect(configuración)
+Method that attempts to reconnect with a previously saved Wi-Fi network.
+
+setting:
+- *ssid* - Name of the Wi-Fi network to connect
+- *timeout* - Maximum time in seconds to wait for network reconnection - Default **60**
+
+```
+const reconnect = await wifi.reconnect({ ssid: "mangos77", timeout: 30 })
+console.log(reconnect)
+```
+
+Response:
+***Reconnection could be established***
+```
+{
+  success: true,
+  msg: 'The Wi-Fi network has been successfully reconnected on interface wlan0',
+  data: { milliseconds: 8531, ssid: 'mangos77' }
+}
+```
+
+***Reconnection could not be established***
+```
+{
+  success: false,
+  msg: 'Could not reconnect to SSID "other_net" on interface wlan0, because the "other_net" network is not in those previously saved in the system',
+  data: { milliseconds: 146, ssid: 'other_net' }
 }
 ```
 

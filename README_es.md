@@ -307,6 +307,37 @@ Respuesta:
 }
 ```
 
+### reconnect(configuración)
+Método que intenta reconectar con una red Wifi guardada anteriormente.
+
+configuración:
+- *ssid* - Nombre de la red Wifi a conectarse
+- *timeout* - Tiempo máximo en segundos para esperar la reconexión a la red - Por defecto **60**
+
+```
+const reconnect = await wifi.reconnect({ ssid: "mangos77", timeout: 30 })
+console.log(reconnect)
+```
+Respuesta:
+***Se pudo establecer la reconexión***
+```
+{
+  success: true,
+  msg: 'The Wi-Fi network has been successfully reconnected on interface wlan0',
+  data: { milliseconds: 8531, ssid: 'mangos77' }
+}
+```
+
+***No fue posible establecer la reconexión***
+```
+{
+  success: false,
+  msg: 'Could not reconnect to SSID "other_net" on interface wlan0, because the "other_net" network is not in those previously saved in the system',
+  data: { milliseconds: 146, ssid: 'other_net' }
+}
+```
+
+
 ### disconnect()
 Método para desconectar la Wifi actual de la interfaz
 ```

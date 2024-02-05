@@ -68,10 +68,17 @@ async function init() {
     console.log(connect)
     */
     
-    //console.log("\n\nDisconnect:")
-    //const disconnect = await wifi.disconnect()
-    //console.log(disconnect)
-    
+    /*
+    console.log("\n\Reonnect:")
+    const reconnect = await wifi.reconnect({ ssid: "mangos77_inv", timeout: 30 })
+    console.log(reconnect)
+    */
+   
+    /*
+    console.log("\n\nDisconnect:")
+    const disconnect = await wifi.disconnect()
+    console.log(disconnect)
+    */
 
 }
 init()

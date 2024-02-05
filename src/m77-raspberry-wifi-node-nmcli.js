@@ -285,6 +285,44 @@ class M77RaspberryWIFI {
         })
     }
 
+    reconnect(config = {}) {
+        return new Promise(async (resolve, reject) => {
+            if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
+
+            const startTime = new Date()
+            const configValues = { ...{ ssid: "", timeout: 60 }, ...config }
+            
+            const command = `connection up "${configValues.ssid}" ifname ${this.#device}`
+
+            const reconnect_to = await this.#nmcli(command, configValues.timeout)
+
+            if (reconnect_to === false) {
+                const status = await this.status()
+                console.log(status)
+                resolve({
+                    success: false,
+                    msg: `Could not reconnect to SSID "${configValues.ssid}" on interface ${this.#device}, because the "${configValues.ssid}" network is not in those previously saved in the system`,
+                    data: {
+                        milliseconds: new Date - startTime,
+                        ssid: configValues.ssid
+                    }
+                }
+                )
+                return false
+            } else {
+                resolve({
+                    success: true,
+                    msg: `The Wi-Fi network has been successfully reconnected on interface ${this.#device}`,
+                    data: {
+                        milliseconds: new Date - startTime,
+                        ssid: configValues.ssid 
+                    }
+                })
+            }
+
+        })
+    }
+
     disconnect() {
         return new Promise(async (resolve, reject) => {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
