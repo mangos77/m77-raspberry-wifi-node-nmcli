@@ -52,7 +52,7 @@ async function init() {
 
     /*
     console.log("\n\nRemove one network")
-    const remove = await wifi.removeNetwork('mangos77_inv')
+    const remove = await wifi.removeNetwork('')
     console.log(remove)
     */
 

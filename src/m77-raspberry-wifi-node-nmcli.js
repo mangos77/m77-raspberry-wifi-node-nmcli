@@ -77,29 +77,11 @@ class M77RaspberryWIFI {
         })
     }
 
-    removeNetwork(idNet = '') {
-        return new Promise(async (resolve, reject) => {
-            if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
-
-            if (idNet === "") {
-                resolve(false); return false
-            }
-            const removeNetwork = await this.#nmcli(`connection delete ${idNet}`)
-
-            if (!removeNetwork) {
-                resolve(false); return false
-            }
-            resolve(true)
-        })
-    }
 
     removeNetwork(idNet = '') {
         return new Promise(async (resolve, reject) => {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
-            if (idNet === "") {
-                resolve(false); return false
-            }
             const removeNetwork = await this.#nmcli(`connection delete "${idNet}"`)
 
             if (!removeNetwork) {
