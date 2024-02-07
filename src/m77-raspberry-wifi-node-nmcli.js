@@ -3,7 +3,7 @@ class M77RaspberryWIFI {
     #debugLevel
     #device = ""
     #ready = false
-    #responseNoInterface = () => { return { success: false, msg: `The "${this.#device}" interface does not exist. Please execute the listInterfaces() method to get the list of available Wifi interfaces and set in init() method.` } }
+    #responseNoInterface = () => { return { success: false, code: 2101, msg: `The interface does not exist. Please execute the listInterfaces() method to get the list of available Wifi interfaces and set in init() method`, data: { device: this.#device} } }
 
     constructor() {
         this.#exec = require('child_process').exec
@@ -85,9 +85,9 @@ class M77RaspberryWIFI {
             const removeNetwork = await this.#nmcli(`connection delete "${idNet}"`)
 
             if (!removeNetwork) {
-                resolve({ success: false, msg: `Wi-Fi network is not in saved networks`, data: { ssid: idNet } }); return false
+                resolve({ success: false, code: 2051, msg: `Wi-Fi network is not in saved networks`, data: { ssid: idNet } }); return false
             }
-            resolve({ success: true, msg: `Wi-Fi network has been removed on the system`, data: { ssid: idNet } })
+            resolve({ success: true, code: 1051, msg: `Wi-Fi network has been removed on the system`, data: { ssid: idNet } })
         })
     }
 
@@ -104,7 +104,7 @@ class M77RaspberryWIFI {
                 deletedNets.push(saved.data[i].ssid)
             }
 
-            resolve({ success: true, msg: `Wi-Fi networks that have been removed are`, data: deletedNets })
+            resolve({ success: true, code: 1041, msg: `All Wi-Fi networks removed`, data: deletedNets })
         })
     }
 
@@ -117,7 +117,7 @@ class M77RaspberryWIFI {
 
             const validate = await this.#validateDevice()
 
-            let response = { success: true, msg: `Interface "${this.#device}" has been found on the system` }
+            let response = { success: true, code: 1101, msg: `Interface has been found on the system`, data: { device: this.device} }
             if (!validate) {
                 response = this.#responseNoInterface()
             }
@@ -134,13 +134,13 @@ class M77RaspberryWIFI {
                 stdout = stdout.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
                 if (err !== null || stdout.length < 1) {
                     this.#debug('There are no Wi-Fi interfaces in the system.')
-                    resolve({ success: false, msg: `There are no Wi-Fi interfaces in the system.`, data: [] })
+                    resolve({ success: false, code: 2001, msg: `There are no Wi-Fi interfaces in the system`, data: [] })
                     return false
                 }
                 const result = stdout.map(row => {
                     return row.split('|')[0].trim()
                 })
-                resolve({ success: true, msg: `Wi-Fi interfaces found on the system`, data: result })
+                resolve({ success: true, code: 1001, msg: `Wi-Fi interfaces found on the system`, data: result })
             })
         })
     }
@@ -150,7 +150,7 @@ class M77RaspberryWIFI {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
             let status = await this.#nmcli(`device show ${this.#device}`)
-            if (status === false) { resolve({ success: false, msg: `Failed to get the status of interface "${this.#device}"`, data: {} }); return false }
+            if (status === false) { resolve({ success: false, code: 2011, msg: `Failed to get the status of interface`, data: { device: this.#device } }); return false }
 
             const statusArr = status.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
@@ -193,7 +193,7 @@ class M77RaspberryWIFI {
                 }
             }
 
-            resolve({ success: true, msg: `Got interface status "${this.#device}"`, data: statusJSON })
+            resolve({ success: true, code: 1011, msg: `Got interface status`, data: statusJSON })
         })
     }
 
@@ -203,7 +203,7 @@ class M77RaspberryWIFI {
 
             const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c  | grep "wifi"`)
 
-            if (saved === false) { resolve({ success: false, msg: `It was not possible to obtain the list of saved Wi-Fi networks in inteface "${this.#device}"`, data: [] }); return false }
+            if (saved === false) { resolve({ success: false, code: 2021, msg: `It was not possible to obtain the list of saved Wi-Fi networks in inteface`, data: { device: this.#device} }); return false }
 
             let savedArr = saved.trim().replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
@@ -220,7 +220,7 @@ class M77RaspberryWIFI {
             }).filter((net) => net !== null)
 
 
-            resolve({ success: true, msg: `List of saved Wi-Fi networks`, data: savedArr })
+            resolve({ success: true, code: 1021, msg: `List of saved Wi-Fi networks`, data: savedArr })
 
         })
     }
@@ -244,10 +244,12 @@ class M77RaspberryWIFI {
                 const status = await this.status()
                 resolve({
                     success: false,
-                    msg: `Could not connect to SSID "${configValues.ssid}" on interface ${this.#device}`,
+                    code: 2061,
+                    msg: `Could not connect to SSID on interface`,
                     data: {
                         milliseconds: new Date - startTime,
-                        ssid: configValues.ssid
+                        ssid: configValues.ssid,
+                        device: this.#device
                     }
                 }
                 )
@@ -255,7 +257,8 @@ class M77RaspberryWIFI {
             } else {
                 resolve({
                     success: true,
-                    msg: `The Wi-Fi network has been successfully configured on interface ${this.#device}`,
+                    code: 1061,
+                    msg: `The Wi-Fi network has been successfully configured on interface`,
                     data: {
                         milliseconds: new Date - startTime,
                         ssid: configValues.ssid 
@@ -281,10 +284,12 @@ class M77RaspberryWIFI {
                 const status = await this.status()
                 resolve({
                     success: false,
-                    msg: `Could not reconnect to SSID "${configValues.ssid}" on interface ${this.#device}, because the "${configValues.ssid}" network is not in those previously saved in the system`,
+                    code: 2071,
+                    msg: `Could not reconnect to SSID on interface, because the Wi-Fi network is not in those previously saved in the system`,
                     data: {
                         milliseconds: new Date - startTime,
-                        ssid: configValues.ssid
+                        ssid: configValues.ssid,
+                        device: this.#device
                     }
                 }
                 )
@@ -292,7 +297,8 @@ class M77RaspberryWIFI {
             } else {
                 resolve({
                     success: true,
-                    msg: `The Wi-Fi network has been successfully reconnected on interface ${this.#device}`,
+                    code: 1071,
+                    msg: `The Wi-Fi network has been successfully reconnected on interface`,
                     data: {
                         milliseconds: new Date - startTime,
                         ssid: configValues.ssid 
@@ -311,17 +317,17 @@ class M77RaspberryWIFI {
 
             if (status.success) {
                 if (status.data.ssid === "") {
-                    resolve({ success: false, msg: `There is no connection established to disconnect from` }); return false
+                    resolve({ success: false, code: 2091, msg: `There is no connection established to disconnect` }); return false
                 }
                 const disconnect = await this.#nmcli(`c down ${status.data.ssid}`)
 
                 if (!disconnect) {
-                    resolve({ success: false, msg: `It was not possible to disconnect from the "${status.data.ssid}" network` }); return false
+                    resolve({ success: false, code: 2092, msg: `It was not possible to disconnect from the network`, data: { ssid: status.data.ssid} }); return false
                 } else {
-                    resolve({ success: true, msg: `You have been disconnected from the Wi-Fi "${status.data.ssid}" network` }); return false
+                    resolve({ success: true, code: 1091, msg: `You have been disconnected from the Wi-Fi network`, data: { ssid: status.data.ssid} }); return false
                 }
             } else {
-                resolve({ success: false, msg: `An error occurred when obtaining the data of the connected Wi-Fi network to be able to disconnect` }); return false; return false
+                resolve({ success: false, code: 2093, msg: `An error occurred when obtaining the data of the connected Wi-Fi network to be able to disconnect` }); return false; return false
             }
         })
     }
@@ -331,7 +337,7 @@ class M77RaspberryWIFI {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
             const scanned = await this.#nmcli(`dev wifi list ifname ${this.#device}`)
-            if (scanned === false) { resolve({ success: false, msg: `It was not possible to obtain the list of the scanned Wi-Fi networks in inteface "${this.#device}"`, data: [] }); return false }
+            if (scanned === false) { resolve({ success: false, code: 2031, msg: `It was not possible to obtain the list of the scanned Wi-Fi networks in inteface`, data: { device: this.#device} }); return false }
 
 
             let scannedArr = scanned.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
@@ -369,7 +375,7 @@ class M77RaspberryWIFI {
                 index === self.findIndex((r) => r.ssid === net.ssid && r.band === net.band && net.ssid !== "--")
             )
 
-            resolve({ success: true, msg: `List of scanned Wi-Fi networks was obtained`, data: scannedArrOrUnique })
+            resolve({ success: true, code: 1031, msg: `List of scanned Wi-Fi networks was obtained`, data: scannedArrOrUnique })
 
         })
     }
@@ -380,9 +386,9 @@ class M77RaspberryWIFI {
 
             const power = await this.#nmcli(`radio wifi on ifname ${this.#device}`)
 
-            if (power === false) { resolve({ success: false, msg: `It was not possible turn on de device "${this.#device}"` }); return false }
+            if (power === false) { resolve({ success: false, code: 2111, msg: `It was not possible turn on de device`, data: { device: this.#device } }); return false }
 
-            resolve({ success: true, msg: `The "${this.#device}" interface has been turned on`, data: { device: this.#device } })
+            resolve({ success: true, code: 1111, msg: `The interface has been turned on`, data: { device: this.#device } })
 
         })
     }
@@ -393,9 +399,9 @@ class M77RaspberryWIFI {
 
             const power = await this.#nmcli(`radio wifi off ifname ${this.#device}`)
 
-            if (power === false) { resolve({ success: false, msg: `It was not possible turn off de device "${this.#device}"` }); return false }
+            if (power === false) { resolve({ success: false, code: 2121, msg: `It was not possible turn off de device`, data: { device: this.#device} }); return false }
 
-            resolve({ success: true, msg: `The "${this.#device}" interface has been turned off`, data: { device: this.#device } })
+            resolve({ success: true, code: 1121, msg: `The interface has been turned off`, data: { device: this.#device } })
 
         })
     }
