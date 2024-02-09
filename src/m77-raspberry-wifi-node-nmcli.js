@@ -117,7 +117,7 @@ class M77RaspberryWIFI {
 
             const validate = await this.#validateDevice()
 
-            let response = { success: true, code: 1101, msg: `Interface has been found on the system`, data: { device: this.device} }
+            let response = { success: true, code: 1101, msg: `Interface has been found on the system`, data: { device: this.#device} }
             if (!validate) {
                 response = this.#responseNoInterface()
             }
@@ -154,21 +154,21 @@ class M77RaspberryWIFI {
 
             const statusArr = status.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            let hwaddr, mtu, state_code, state_str, ssid, ipaddres, gateway, dns = ''
+            let hwaddr, mtu, state_code, state_str, ssid, ipaddress, gateway, dns = ''
 
             try { hwaddr = statusArr.filter(data => data.includes('GENERAL.HWADDR'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { mtu = statusArr.filter(data => data.includes('GENERAL.MTU'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { state_code = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[0].trim() } catch (e) { }
             try { state_str = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[1].replace("(", '').replace(")", '').trim() } catch (e) { }
             try { ssid = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { ipaddres = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
+            try { ipaddress = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
             try { gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
 
             const device_info = {
                 hwaddr: hwaddr === undefined ? '' : hwaddr,
                 mtu: mtu === undefined ? '' : mtu,
-                ipaddres: ipaddres === undefined ? '' : ipaddres,
+                ipaddress: ipaddress === undefined ? '' : ipaddress,
                 gateway: gateway === undefined ? '' : gateway,
                 dns: dns === undefined ? '' : dns,
             }
@@ -201,7 +201,7 @@ class M77RaspberryWIFI {
         return new Promise(async (resolve, reject) => {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
-            const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c  | grep "wifi"`)
+            const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c  | grep "wifi"`) || ''
 
             if (saved === false) { resolve({ success: false, code: 2021, msg: `It was not possible to obtain the list of saved Wi-Fi networks in inteface`, data: { device: this.#device} }); return false }
 

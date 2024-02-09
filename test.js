@@ -26,11 +26,11 @@ async function init() {
     console.log(statusCI)
     */
 
-    /*
+    
     console.log("\n\nSaved Networks:")
     const saved = await wifi.savedNetworks()
     console.log(saved)
-    */
+    
 
     /*
     console.log("\n\Turn off:")

@@ -122,7 +122,7 @@ Respuesta:
     device_info: {
       hwaddr: 'D8:3A:DD:2D:CB:B7',
       mtu: '1500',
-      ipaddres: '',
+      ipaddress: '',
       gateway: '',
       dns: []
     }
@@ -144,7 +144,7 @@ Respuesta:
     device_info: {
       hwaddr: "D8:3A:DD:2D:CB:B7",
       mtu: "1500",
-      ipaddres: "192.168.68.93",
+      ipaddress: "192.168.68.93",
       gateway: "192.168.68.1",
       dns: [
         "8.8.8.8",
@@ -169,7 +169,7 @@ Respuesta:
     device_info: {
       hwaddr: "D8:3A:DD:2D:CB:B7",
       mtu: "1500",
-      ipaddres: "192.168.68.93",
+      ipaddress: "192.168.68.93",
       gateway: "192.168.68.1",
       dns: [
         "8.8.8.8",
@@ -401,7 +401,7 @@ Esto puede servir para poder adaptar los textos de respuesta como se requiera en
 | 1021 |   | saved_networks      | List of saved Wi-Fi networks
 | 2021 | X | saved_networks      | It was not possible to obtain the list of saved Wi-Fi networks in inteface
 | 1031 |   | scan                | List of scanned Wi-Fi networks was obtained
-| 2031 |   | scan                | It was not possible to obtain the list of the scanned Wi-Fi networks in inteface
+| 2031 | X | scan                | It was not possible to obtain the list of the scanned Wi-Fi networks in inteface
 | 1041 |   | remove_all_networks | All Wi-Fi networks removed
 | 1051 |   | remove_network      | Wi-Fi network has been removed on the system
 | 2051 | X | remove_network      | Wi-Fi network is not in saved networks
