@@ -3,7 +3,7 @@ class M77RaspberryWIFI {
     #debugLevel
     #device = ""
     #ready = false
-    #responseNoInterface = () => { return { success: false, code: 2101, msg: `The interface does not exist. Please execute the listInterfaces() method to get the list of available Wifi interfaces and set in init() method`, data: { device: this.#device} } }
+    #responseNoInterface = () => { return { success: false, code: 2101, msg: `The interface does not exist. Please execute the listInterfaces() method to get the list of available Wifi interfaces and set in init() method`, data: { device: this.#device } } }
 
     constructor() {
         this.#exec = require('child_process').exec
@@ -54,6 +54,28 @@ class M77RaspberryWIFI {
             if (channel >= 14) band = "5 GHz"
             resolve(band)
         })
+    }
+
+    #cidrToNetmask(cidr) {
+        cidr = parseInt(cidr)
+        if (isNaN(parseInt(cidr) || parseInt(cidr) > 32)) return false
+
+        let binary = "1".repeat(cidr).padEnd(32, "0")
+
+        let mask = binary.match(/.{8}/g).map(function (byte) {
+            return parseInt(byte, 2)
+        }).join(".")
+
+        return mask
+    }
+
+    #netmaskToCIDR(netmask) {
+        const netmaskParts = netmask.split('.').map(Number);
+        const binaryNetmask = netmaskParts.map(part => part.toString(2).padStart(8, '0')).join('');
+
+        const cidr = binaryNetmask.indexOf('0');
+
+        return cidr === -1 ? 32 : cidr;
     }
 
     #nmcli(action, timeout = 120) {
@@ -117,7 +139,7 @@ class M77RaspberryWIFI {
 
             const validate = await this.#validateDevice()
 
-            let response = { success: true, code: 1101, msg: `Interface has been found on the system`, data: { device: this.#device} }
+            let response = { success: true, code: 1101, msg: `Interface has been found on the system`, data: { device: this.#device } }
             if (!validate) {
                 response = this.#responseNoInterface()
             }
@@ -154,7 +176,7 @@ class M77RaspberryWIFI {
 
             const statusArr = status.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            let hwaddr, mtu, state_code, state_str, ssid, ipaddress, gateway, dns = ''
+            let hwaddr, mtu, state_code, state_str, ssid, ipaddress, cidr, gateway, dns = ''
 
             try { hwaddr = statusArr.filter(data => data.includes('GENERAL.HWADDR'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { mtu = statusArr.filter(data => data.includes('GENERAL.MTU'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
@@ -162,13 +184,17 @@ class M77RaspberryWIFI {
             try { state_str = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[1].replace("(", '').replace(")", '').trim() } catch (e) { }
             try { ssid = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { ipaddress = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
+            try { cidr = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
             try { gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
+
+            let netmask = this.#cidrToNetmask(cidr)
 
             const device_info = {
                 hwaddr: hwaddr === undefined ? '' : hwaddr,
                 mtu: mtu === undefined ? '' : mtu,
                 ipaddress: ipaddress === undefined ? '' : ipaddress,
+                netmask: netmask,
                 gateway: gateway === undefined ? '' : gateway,
                 dns: dns === undefined ? '' : dns,
             }
@@ -203,7 +229,7 @@ class M77RaspberryWIFI {
 
             const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c  | grep "wifi"`) || ''
 
-            if (saved === false) { resolve({ success: false, code: 2021, msg: `It was not possible to obtain the list of saved Wi-Fi networks in inteface`, data: { device: this.#device} }); return false }
+            if (saved === false) { resolve({ success: false, code: 2021, msg: `It was not possible to obtain the list of saved Wi-Fi networks in inteface`, data: { device: this.#device } }); return false }
 
             let savedArr = saved.trim().replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
@@ -230,18 +256,53 @@ class M77RaspberryWIFI {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
             const startTime = new Date()
-            const configValues = { ...{ ssid: "", psk: "", bssid: "", hidden: false, timeout: 60 }, ...config }
+            const configValues = { ...{ ssid: "", psk: "", bssid: "", hidden: false, timeout: 60, ipaddress: "", netmask: "", gateway: "", dns: [] }, ...config }
+            if(!Array.isArray(configValues.dns)) configValues.dns = []
 
-            const is_hidden = configValues.hidden ? 'hidden yes' : ''
-            const width_bssid = configValues.bssid.trim().length == 17 ? `bssid ${configValues.bssid.trim()}` : ''
+            const is_hidden = configValues.hidden ? '802-11-wireless.hidden yes' : ''
+            const with_bssid = configValues.bssid.trim().length == 17 ? `802-11-wireless.bssid ${configValues.bssid.trim()}` : ''
+            const with_psk = configValues.psk.trim().length > 0 ? `wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${configValues.psk}"` : ''
+
+            const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            if (configValues.ipaddress.trim().length > 0 && !ipv4Regex.test(configValues.ipaddress.trim())) {
+                return resolve({ success: false, code: 2062, msg: `The static ipaddress is not valid`, data: { ipaddress: configValues.ipaddress.trim() } })
+            }
+            if (configValues.netmask.trim().length > 0 && !ipv4Regex.test(configValues.netmask.trim())) {
+                return resolve({ success: false, code: 2063, msg: `The static netmask is not valid`, data: { netmask: configValues.netmask.trim() } })
+            }
+            if (configValues.gateway.trim().length > 0 && !ipv4Regex.test(configValues.gateway.trim())) {
+                return resolve({ success: false, code: 2064, msg: `The static gateway is not valid`, data: { getaway: configValues.gateway.trim() } })
+            }
+
+            for (let i = 0; i < configValues.dns.length; i++) {
+                if (!ipv4Regex.test(configValues.dns[i].trim())) {
+                    return resolve({ success: false, code: 2065, msg: `One or more static dns are not valid`, data: { dns: configValues.dns } })
+                }
+            }
+            configValues.dns = configValues.dns.filter((dns) => ipv4Regex.test(dns.trim()))
+
+
+            if ((configValues.ipaddress.trim()+configValues.netmask.trim()+configValues.gateway.trim()+configValues.dns.join()).length > 0) {
+                if (configValues.ipaddress.trim().length < 1 || configValues.netmask.trim().length < 1 || configValues.gateway.trim().length < 1 || configValues.dns.length < 1) {
+                    return resolve({ success: false, code: 2066, msg: `To set a custom address parameters; ipaddress, netmask, gateway and dns are required`, data: { ipaddress: configValues.ipaddress.trim(), netmask: configValues.netmask, gateway: configValues.gateway, dns: configValues.dns } })
+                }
+            }
+
+            
+            const with_static_ip = ipv4Regex.test(configValues.ipaddress.trim()) && ipv4Regex.test(configValues.netmask.trim()) ? `ipv4.method manual ipv4.address ${config.ipaddress.trim()}/${this.#netmaskToCIDR(config.netmask.trim())}` : ''
+            const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway ${config.gateway.trim()}` : ''
+            const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns ${configValues.dns.join(',')}` : ``
+
 
             const deleted = await this.removeNetwork(configValues.ssid)
 
-            const command = `device wifi connect "${configValues.ssid}" password "${configValues.psk}" ${width_bssid} ${is_hidden} ifname ${this.#device}`
-            const connect_to = await this.#nmcli(command, configValues.timeout)
+            const command = `con add con-name "${configValues.ssid}" type wifi ifname wlan0 ssid "${configValues.ssid}" -- ${with_psk} ${with_static_ip} ${with_static_DNS} ${with_static_gw} ${with_bssid} ${is_hidden}`
 
-            if (connect_to === false) {
-                const status = await this.status()
+            const add_connection = await this.#nmcli(command, configValues.timeout)
+
+            const connect_up = await this.reconnect({ ssid: configValues.ssid })
+
+            if (add_connection === false || connect_up.success === false) {
                 resolve({
                     success: false,
                     code: 2061,
@@ -261,7 +322,7 @@ class M77RaspberryWIFI {
                     msg: `The Wi-Fi network has been successfully configured on interface`,
                     data: {
                         milliseconds: new Date - startTime,
-                        ssid: configValues.ssid 
+                        ssid: configValues.ssid
                     }
                 })
             }
@@ -275,7 +336,7 @@ class M77RaspberryWIFI {
 
             const startTime = new Date()
             const configValues = { ...{ ssid: "", timeout: 60 }, ...config }
-            
+
             const command = `connection up "${configValues.ssid}" ifname ${this.#device}`
 
             const reconnect_to = await this.#nmcli(command, configValues.timeout)
@@ -301,7 +362,7 @@ class M77RaspberryWIFI {
                     msg: `The Wi-Fi network has been successfully reconnected on interface`,
                     data: {
                         milliseconds: new Date - startTime,
-                        ssid: configValues.ssid 
+                        ssid: configValues.ssid
                     }
                 })
             }
@@ -322,9 +383,9 @@ class M77RaspberryWIFI {
                 const disconnect = await this.#nmcli(`c down ${status.data.ssid}`)
 
                 if (!disconnect) {
-                    resolve({ success: false, code: 2092, msg: `It was not possible to disconnect from the network`, data: { ssid: status.data.ssid} }); return false
+                    resolve({ success: false, code: 2092, msg: `It was not possible to disconnect from the network`, data: { ssid: status.data.ssid } }); return false
                 } else {
-                    resolve({ success: true, code: 1091, msg: `You have been disconnected from the Wi-Fi network`, data: { ssid: status.data.ssid} }); return false
+                    resolve({ success: true, code: 1091, msg: `You have been disconnected from the Wi-Fi network`, data: { ssid: status.data.ssid } }); return false
                 }
             } else {
                 resolve({ success: false, code: 2093, msg: `An error occurred when obtaining the data of the connected Wi-Fi network to be able to disconnect` }); return false; return false
@@ -337,7 +398,7 @@ class M77RaspberryWIFI {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
             const scanned = await this.#nmcli(`dev wifi list ifname ${this.#device}`)
-            if (scanned === false) { resolve({ success: false, code: 2031, msg: `It was not possible to obtain the list of the scanned Wi-Fi networks in inteface`, data: { device: this.#device} }); return false }
+            if (scanned === false) { resolve({ success: false, code: 2031, msg: `It was not possible to obtain the list of the scanned Wi-Fi networks in inteface`, data: { device: this.#device } }); return false }
 
 
             let scannedArr = scanned.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
@@ -364,7 +425,7 @@ class M77RaspberryWIFI {
                     chan,
                     band,
                     rate,
-                    security,
+                    security: security.trim() === "--"? 'OPEN': security.trim(),
                     strength
                 }
                 scannedArrOr[i] = net
@@ -399,7 +460,7 @@ class M77RaspberryWIFI {
 
             const power = await this.#nmcli(`radio wifi off ifname ${this.#device}`)
 
-            if (power === false) { resolve({ success: false, code: 2121, msg: `It was not possible turn off de device`, data: { device: this.#device} }); return false }
+            if (power === false) { resolve({ success: false, code: 2121, msg: `It was not possible turn off de device`, data: { device: this.#device } }); return false }
 
             resolve({ success: true, code: 1121, msg: `The interface has been turned off`, data: { device: this.#device } })
 

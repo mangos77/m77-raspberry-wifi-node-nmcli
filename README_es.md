@@ -407,6 +407,11 @@ Esto puede servir para poder adaptar los textos de respuesta como se requiera en
 | 2051 | X | remove_network      | Wi-Fi network is not in saved networks
 | 1061 |   | connect             | The Wi-Fi network has been successfully configured on interface
 | 2061 | X | connect             | Could not connect to SSID on interface
+| 2062 | X | connect             | The static ipaddress is not valid
+| 2063 | X | connect             | The static netmask is not valid
+| 2064 | X | connect             | The static gateway is not valid
+| 2065 | X | connect             | One or more static dns are not valid
+| 2066 | X | connect             | To set a custom address parameters; ipaddress, netmask, gateway and dns are required
 | 1071 |   | reconnect           | The Wi-Fi network has been successfully reconnected on interface
 | 2071 | X | reconnect           | Could not reconnect to SSID on interface, because the Wi-Fi network is not in those previously saved in the system
 | 1091 |   | disconnect          | You have been disconnected from the Wi-Fi network

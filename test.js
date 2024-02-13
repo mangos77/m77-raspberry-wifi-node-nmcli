@@ -26,11 +26,11 @@ async function init() {
     console.log(statusCI)
     */
 
-    
+    /*
     console.log("\n\nSaved Networks:")
     const saved = await wifi.savedNetworks()
     console.log(saved)
-    
+    */
 
     /*
     console.log("\n\Turn off:")
@@ -68,6 +68,12 @@ async function init() {
     console.log(connect)
     */
     
+    /*
+    console.log("\n\Connect static params:")
+    const connectSP = await wifi.connect({ ssid: "mangos77", psk: "ABCDE12345", bssid: "48:22:54:9D:4A:C7", ipaddress:"192.168.68.179", netmask:"255.255.252.0", gateway:"192.168.255.1", dns:['8.8.8.8', '8.8.4.4'], hidden: false, timeout: 45 })
+    console.log(connectSP)
+    */
+
     /*
     console.log("\n\Reonnect:")
     const reconnect = await wifi.reconnect({ ssid: "mangos77_inv", timeout: 30 })
