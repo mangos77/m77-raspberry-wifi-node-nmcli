@@ -295,11 +295,15 @@ configuración:
 - *ssid* - Nombre de la red Wifi a conectarse
 - *psk* - Contraseña de la red Wifi - **Dejar vacío en caso de red abierta**
 - *bssid* - Usar el bssid en caso que se deseara fijar la conexión, *o en el caso que el ssid use dos bandas y se necsite conectar a una banda determinada* - Por defecto '' 
+- *ipaddress* - Establecer de forma estática la dirección ip de la conexión (*)
+- *netmask* - Establecer de forma estática la máscara de red (*)
+- *gateway* - Establecer de forma estática la pasarela (*)
+- *dns* - Establecer de forma estática los DNS de la conexión, estas deben estar en un arreglo (*)
 - *hidden* - [true | false] Para indicar si se trata o no de una red oculta - Por defecto **false**
 - *timeout* - Tiempo máximo en segundos para esperar la conexión a la red - Por defecto **60**
 
 ```
-const connect = await wifi.connect({ ssid: "mangos77", psk: "ABCDE12345", bssid: "4E:22:54:9D:4A:C6", hidden: false, timeout: 45 })
+const connect = await wifi.connect({ ssid: "mangos77", psk: "ABCDE12345", bssid: "48:22:54:9D:4A:C7", ipaddress:"192.168.68.179", netmask:"255.255.252.0", gateway:"192.168.255.1", dns:['8.8.8.8', '8.8.4.4'], hidden: false, timeout: 45 })
 console.log(connect)
 ```
 Respuesta:

@@ -288,11 +288,15 @@ Response:
 ### connect(config)
 Method that attempts to establish a connection with a Wi-Fi network, this can be secure, hidden, open networks or combinations.
 If the connection could not be made, an attempt is made to connect to one of the Wi-Fi networks saved in the system that are available.
-
+**This action can take a long time per connection attempt, the maximum timeout for each connection attempt is defined in init() with the *connect_timeout* configuration parameter **
 setting:
 - *ssid* - Name of the Wi-Fi network to connect
 - *psk* - Wifi network password - **Leave empty in case of open network**
 - *bssid* - Use the bssid in case you want to fix the connection, *or in case the ssid uses two bands and you need to connect to a specific band* - By default ''
+- *ipaddress* - Statically set the IP address of the connection (*)
+- *netmask* - Statically set the netmask (*)
+- *gateway* - Statically establish the gateway (*)
+- *dns* - Statically establish the DNS of the connection, these must be in an array (*)
 - *hidden* - [true | false] To indicate whether or not it is a hidden network - By default **false**
 - *timeout* - Maximum time in seconds to wait for network connection - Default **60**
 ```
