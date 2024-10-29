@@ -5,6 +5,8 @@ class M77RaspberryWIFI {
     #ready = false
     #responseNoInterface = () => { return { success: false, code: 2101, msg: `The interface does not exist. Please execute the listInterfaces() method to get the list of available Wifi interfaces and set in init() method`, data: { device: this.#device } } }
 
+    #is_bussy = false
+
     constructor() {
         this.#exec = require('child_process').exec
     }
@@ -79,19 +81,35 @@ class M77RaspberryWIFI {
     }
 
     #nmcli(action, timeout = 120) {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             if (this.#ready === false) {
                 this.#debug(`The "${this.#device}" interface does not exist.`, 'Please execute the listInterfaces() method to get the list of available Wifi interfaces.')
                 resolve(false)
             } else {
                 timeout = isNaN(parseInt(timeout)) ? 60 : parseInt(timeout)
+
+                const time_limit = new Date().getTime() + ((timeout + 1) * 1000)
+
+                while (this.#is_bussy) {
+                    if (new Date().getTime() > time_limit) {
+                        this.#debug(`The "${this.#device}" is bussy, try again.`)
+                        return resolve(false)
+                    }
+                    await this.#sleep(10)
+                }
+                this.#is_bussy = true
+
                 const has_timeout = `timeout ${timeout}`
                 const command = `sudo ${has_timeout} /usr/bin/nmcli ${action}`
+                this.#debug(command)
+
                 this.#exec(command, (err, stdout, stderr) => {
                     if (err !== null) {
                         this.#debug(stderr)
+                        this.#is_bussy = false
                         resolve(false)
                     } else {
+                        this.#is_bussy = false
                         resolve(stdout.trim())
                     }
                 })
@@ -257,10 +275,10 @@ class M77RaspberryWIFI {
 
             const startTime = new Date()
             const configValues = { ...{ ssid: "", psk: "", bssid: "", hidden: false, timeout: 60, ipaddress: "", netmask: "", gateway: "", dns: [] }, ...config }
-            if(!Array.isArray(configValues.dns)) configValues.dns = []
+            if (!Array.isArray(configValues.dns)) configValues.dns = []
 
-            const is_hidden = configValues.hidden ? '802-11-wireless.hidden yes' : ''
-            const with_bssid = configValues.bssid.trim().length == 17 ? `802-11-wireless.bssid ${configValues.bssid.trim()}` : ''
+            const is_hidden = configValues.hidden ? 'wifi.hidden yes' : ''
+            const with_bssid = configValues.bssid.trim().length == 17 ? `wifi.bssid ${configValues.bssid.trim()}` : ''
             const with_psk = configValues.psk.trim().length > 0 ? `wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${configValues.psk}"` : ''
 
             const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -282,25 +300,38 @@ class M77RaspberryWIFI {
             configValues.dns = configValues.dns.filter((dns) => ipv4Regex.test(dns.trim()))
 
 
-            if ((configValues.ipaddress.trim()+configValues.netmask.trim()+configValues.gateway.trim()+configValues.dns.join()).length > 0) {
+            if ((configValues.ipaddress.trim() + configValues.netmask.trim() + configValues.gateway.trim() + configValues.dns.join()).length > 0) {
                 if (configValues.ipaddress.trim().length < 1 || configValues.netmask.trim().length < 1 || configValues.gateway.trim().length < 1 || configValues.dns.length < 1) {
                     return resolve({ success: false, code: 2066, msg: `To set a custom address parameters; ipaddress, netmask, gateway and dns are required`, data: { ipaddress: configValues.ipaddress.trim(), netmask: configValues.netmask, gateway: configValues.gateway, dns: configValues.dns } })
                 }
             }
 
-            
-            const with_static_ip = ipv4Regex.test(configValues.ipaddress.trim()) && ipv4Regex.test(configValues.netmask.trim()) ? `ipv4.method manual ipv4.address ${config.ipaddress.trim()}/${this.#netmaskToCIDR(config.netmask.trim())}` : ''
-            const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway ${config.gateway.trim()}` : ''
-            const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns ${configValues.dns.join(',')}` : ``
+
+            const with_static_ip = ipv4Regex.test(configValues.ipaddress.trim()) && ipv4Regex.test(configValues.netmask.trim()) ? `ipv4.method manual ipv4.dhcp-timeout 0 ipv4.address ${config.ipaddress.trim()}/${this.#netmaskToCIDR(config.netmask.trim())}` : ''
+            const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway "${config.gateway.trim()}"` : ''
+            const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns "${configValues.dns.join(',')}"` : ``
 
 
-            const deleted = await this.removeNetwork(configValues.ssid)
+            await this.removeNetwork(configValues.ssid)
 
-            const command = `con add con-name "${configValues.ssid}" type wifi ifname wlan0 ssid "${configValues.ssid}" -- ${with_psk} ${with_static_ip} ${with_static_DNS} ${with_static_gw} ${with_bssid} ${is_hidden}`
+            const command_add = `connection add con-name "${configValues.ssid}" type wifi ifname wlan0 ssid "${configValues.ssid}" ${with_psk} ${with_bssid} ${is_hidden}`
 
-            const add_connection = await this.#nmcli(command, configValues.timeout)
+            const add_connection = await this.#nmcli(command_add, configValues.timeout)
 
-            const connect_up = await this.reconnect({ ssid: configValues.ssid })
+            this.#sleep(500)
+
+            await this.#nmcli(`connection down "${configValues.ssid}"`, configValues.timeout)
+
+            if ((with_static_ip + with_static_gw + with_static_DNS).length > 0) {
+                this.#sleep(500)
+                const command_modify = `connection modify "${configValues.ssid}" ${with_static_ip} ${with_static_DNS} ${with_static_gw} connection.autoconnect-priority 10`
+                await this.#nmcli(command_modify, configValues.timeout)
+            } else {
+                await this.#nmcli(`connection.autoconnect-priority 10`, configValues.timeout)
+                this.#sleep(500)
+            }
+
+            const connect_up = await this.#nmcli(`connection up "${configValues.ssid}"`, configValues.timeout)
 
             if (add_connection === false || connect_up.success === false) {
                 resolve({
@@ -336,13 +367,23 @@ class M77RaspberryWIFI {
 
             const startTime = new Date()
             const configValues = { ...{ ssid: "", timeout: 60 }, ...config }
+            
+            let reconnect_to = false
+            console.log("****** ", configValues.ssid)
+            if (configValues.ssid.trim().length > 1) {
+                const command_down = `connection down ifname ${this.#device}`
+                await this.#nmcli(command_down, configValues.timeout)
+                await this.disconnect()
+                this.#sleep(300)
 
-            const command = `connection up "${configValues.ssid}" ifname ${this.#device}`
+                const command = `connection up "${configValues.ssid}" ifname ${this.#device}`
 
-            const reconnect_to = await this.#nmcli(command, configValues.timeout)
+                reconnect_to = await this.#nmcli(command, configValues.timeout)
+            } else {
+                reconnect_to = await this.#nmcli(`device connect ${this.#device}`, configValues.timeout)
+            }
 
             if (reconnect_to === false) {
-                const status = await this.status()
                 resolve({
                     success: false,
                     code: 2071,
@@ -356,13 +397,14 @@ class M77RaspberryWIFI {
                 )
                 return false
             } else {
+                const status = await this.status()
                 resolve({
                     success: true,
                     code: 1071,
                     msg: `The Wi-Fi network has been successfully reconnected on interface`,
                     data: {
                         milliseconds: new Date - startTime,
-                        ssid: configValues.ssid
+                        ssid: status.data.ssid
                     }
                 })
             }
@@ -375,14 +417,12 @@ class M77RaspberryWIFI {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
             const status = await this.status()
-
             if (status.success) {
                 if (status.data.ssid === "") {
                     resolve({ success: false, code: 2091, msg: `There is no connection established to disconnect` }); return false
                 }
-                const disconnect = await this.#nmcli(`c down ${status.data.ssid}`)
-
-                if (!disconnect) {
+                const disconnect = await this.#nmcli(`connection down id "${status.data.ssid}"`)
+                if (disconnect === false) {
                     resolve({ success: false, code: 2092, msg: `It was not possible to disconnect from the network`, data: { ssid: status.data.ssid } }); return false
                 } else {
                     resolve({ success: true, code: 1091, msg: `You have been disconnected from the Wi-Fi network`, data: { ssid: status.data.ssid } }); return false
@@ -397,7 +437,7 @@ class M77RaspberryWIFI {
         return new Promise(async (resolve, reject) => {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
-            const scanned = await this.#nmcli(`dev wifi list ifname ${this.#device}`)
+            const scanned = await this.#nmcli(`device wifi list ifname ${this.#device} --rescan no`)
             if (scanned === false) { resolve({ success: false, code: 2031, msg: `It was not possible to obtain the list of the scanned Wi-Fi networks in inteface`, data: { device: this.#device } }); return false }
 
 
@@ -425,7 +465,7 @@ class M77RaspberryWIFI {
                     chan,
                     band,
                     rate,
-                    security: security.trim() === "--"? 'OPEN': security.trim(),
+                    security: security.trim() === "--" ? 'OPEN' : security.trim(),
                     strength
                 }
                 scannedArrOr[i] = net
