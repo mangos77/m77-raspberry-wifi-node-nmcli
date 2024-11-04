@@ -220,7 +220,7 @@ class M77RaspberryWIFI {
 
             const statusJSON = {
                 device: this.#device,
-                connected: state_str === "connected" ? true : false,
+                connected: parseInt(state_code) === 100 ? true : false,
                 state_code: parseInt(state_code),
                 state_str,
                 ssid,
@@ -307,9 +307,9 @@ class M77RaspberryWIFI {
             }
 
 
-            const with_static_ip = ipv4Regex.test(configValues.ipaddress.trim()) && ipv4Regex.test(configValues.netmask.trim()) ? `ipv4.method manual ipv4.dhcp-timeout 0 ipv4.address ${config.ipaddress.trim()}/${this.#netmaskToCIDR(config.netmask.trim())}` : ''
-            const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway "${config.gateway.trim()}"` : ''
-            const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns "${configValues.dns.join(',')}"` : ``
+            const with_static_ip = ipv4Regex.test(configValues.ipaddress.trim()) && ipv4Regex.test(configValues.netmask.trim()) ? `ipv4.method manual ipv4.address ${config.ipaddress.trim()}/${this.#netmaskToCIDR(config.netmask.trim())}` : 'ipv4.method auto ipv4.addresses ""'
+            const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway "${config.gateway.trim()}"` : 'ipv4.gateway ""'
+            const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns "${configValues.dns.join(',')}"` : `ipv4.dns ""`
 
 
             await this.removeNetwork(configValues.ssid)
@@ -322,14 +322,9 @@ class M77RaspberryWIFI {
 
             await this.#nmcli(`connection down "${configValues.ssid}"`, configValues.timeout)
 
-            if ((with_static_ip + with_static_gw + with_static_DNS).length > 0) {
-                this.#sleep(500)
-                const command_modify = `connection modify "${configValues.ssid}" ${with_static_ip} ${with_static_DNS} ${with_static_gw} connection.autoconnect-priority 10`
-                await this.#nmcli(command_modify, configValues.timeout)
-            } else {
-                await this.#nmcli(`connection.autoconnect-priority 10`, configValues.timeout)
-                this.#sleep(500)
-            }
+            const command_modify = `connection modify "${configValues.ssid}" ${with_static_ip} ${with_static_DNS} ${with_static_gw} connection.autoconnect-priority 10`
+            await this.#nmcli(command_modify, configValues.timeout)
+
 
             const connect_up = await this.#nmcli(`connection up "${configValues.ssid}"`, configValues.timeout)
 
@@ -367,7 +362,7 @@ class M77RaspberryWIFI {
 
             const startTime = new Date()
             const configValues = { ...{ ssid: "", timeout: 60 }, ...config }
-            
+
             let reconnect_to = false
             console.log("****** ", configValues.ssid)
             if (configValues.ssid.trim().length > 1) {
