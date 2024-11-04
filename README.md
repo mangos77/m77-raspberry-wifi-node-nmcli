@@ -13,6 +13,9 @@ You can find it at [***api-m77-raspberry-wifi-node-nmcli***](https://github.com/
 
 ___
 
+> **Additional:** A module for ethernet connections is included
+___
+
 
 ### Because?
 
