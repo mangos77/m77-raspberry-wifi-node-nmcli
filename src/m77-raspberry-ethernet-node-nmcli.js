@@ -142,7 +142,7 @@ class M77RaspberryETH {
 
             const statusArr = status.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            let hwaddr, mtu, state_code, state_str, connection_name, device_ipaddress, device_cidr, device_gateway, device_dns = ''
+            let hwaddr, mtu, state_code, state_str, connection_name, device_ipaddress, device_cidr, device_gateway, device_dns = '', wired
 
             try { connection_name = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { hwaddr = statusArr.filter(data => data.includes('GENERAL.HWADDR'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
@@ -153,27 +153,38 @@ class M77RaspberryETH {
             try { device_cidr = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
             try { device_gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { device_dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
+            try { wired = statusArr.filter(data => data.includes('WIRED-PROPERTIES.CARRIER')).map(data => data.split("|")[1])[0] } catch (e) { }
 
-
+            
             let statusConn = await this.#nmcli(`connection show "${connection_name}"`)
-            const statusConnArr = statusConn.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            let method, ipaddress, cidr, gateway, dns = ''
+            let method, ipaddress, cidr, gateway, dns = '', netmask
+            if(wired === "off" || !statusConn){
+                method = "auto"
+                ipaddress = ""
+                cidr = ""
+                gateway = ""
+                netmask = ""
+                dns = []
+            } else {
+                const statusConnArr = statusConn.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            try { method = statusConnArr.filter(data => data.includes('ipv4.method:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { ipaddress = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
-            try { cidr = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
-            try { gateway = statusConnArr.filter(data => data.includes('ipv4.gateway:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { dns = statusConnArr.filter(data => data.includes('ipv4.dns:'))[0].split("|")[1].split(",") } catch (e) { }
+                try { method = statusConnArr.filter(data => data.includes('ipv4.method:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+                try { ipaddress = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
+                try { cidr = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
+                try { gateway = statusConnArr.filter(data => data.includes('ipv4.gateway:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+                try { dns = statusConnArr.filter(data => data.includes('ipv4.dns:'))[0].split("|")[1].split(",") } catch (e) { }
 
-            ipaddress = !ipaddress || ipaddress.trim().length < 1 ? device_ipaddress : ipaddress
-            cidr = !cidr || cidr.trim().length < 1 ? device_cidr : cidr
-            gateway = !gateway || gateway.trim().length < 1 ? device_gateway : gateway
-            dns = !dns || dns.length < 1 || dns[0] === "--" ? device_dns : dns
+                ipaddress = !ipaddress || ipaddress.trim().length < 1 ? device_ipaddress : ipaddress
+                cidr = !cidr || cidr.trim().length < 1 ? device_cidr : cidr
+                gateway = !gateway || gateway.trim().length < 1 ? device_gateway : gateway
+                dns = !dns || dns.length < 1 || dns[0] === "--" ? device_dns : dns
+                netmask = this.#cidrToNetmask(cidr)
+            }
 
-            let netmask = this.#cidrToNetmask(cidr)
 
             const device_info = {
+                plugged_in: wired,
                 method: method === undefined ? '' : method,
                 hwaddr: hwaddr === undefined ? '' : hwaddr,
                 mtu: mtu === undefined ? '' : mtu,

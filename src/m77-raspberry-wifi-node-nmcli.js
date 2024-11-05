@@ -209,22 +209,29 @@ class M77RaspberryWIFI {
 
 
             let statusConn = await this.#nmcli(`connection show "${connection_name}"`)
-            const statusConnArr = statusConn.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
+            let method, ipaddress, cidr, gateway, dns = '', netmask
+            if(!statusConn){
+                method = "auto"
+                ipaddress = ""
+                cidr = ""
+                gateway = ""
+                netmask = ""
+                dns = []
+            } else {
+                const statusConnArr = statusConn.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            let method, ipaddress, cidr, gateway, dns = ''
+                try { method = statusConnArr.filter(data => data.includes('ipv4.method:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+                try { ipaddress = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
+                try { cidr = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
+                try { gateway = statusConnArr.filter(data => data.includes('ipv4.gateway:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+                try { dns = statusConnArr.filter(data => data.includes('ipv4.dns:'))[0].split("|")[1].split(",") } catch (e) { }
 
-            try { method = statusConnArr.filter(data => data.includes('ipv4.method:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { ipaddress = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
-            try { cidr = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
-            try { gateway = statusConnArr.filter(data => data.includes('ipv4.gateway:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { dns = statusConnArr.filter(data => data.includes('ipv4.dns:'))[0].split("|")[1].split(",") } catch (e) { }
-
-            ipaddress = !ipaddress || ipaddress.trim().length < 1? device_ipaddress: ipaddress
-            cidr = !cidr || cidr.trim().length < 1? device_cidr: cidr
-            gateway = !gateway || gateway.trim().length < 1? device_gateway: gateway
-            dns = !dns || dns.length < 1 || dns[0] === "--" ? device_dns : dns
-                       
-            let netmask = this.#cidrToNetmask(cidr)
+                ipaddress = !ipaddress || ipaddress.trim().length < 1 ? device_ipaddress : ipaddress
+                cidr = !cidr || cidr.trim().length < 1 ? device_cidr : cidr
+                gateway = !gateway || gateway.trim().length < 1 ? device_gateway : gateway
+                dns = !dns || dns.length < 1 || dns[0] === "--" ? device_dns : dns
+                netmask = this.#cidrToNetmask(cidr)
+            }
 
             const device_info = {
                 method: method === undefined ? '' : method,

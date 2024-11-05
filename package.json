@@ -1,6 +1,6 @@
 {
   "name": "m77-raspberry-wifi-node-nmcli",
-  "version": "1.6.0",
+  "version": "1.6.2",
   "description": "Module in nodejs to configure Wifi connections on Raspberry Pi (managed by nmcli)",
   "main": "./src/index.js",
   "scripts": {
