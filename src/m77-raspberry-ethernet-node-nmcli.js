@@ -122,7 +122,7 @@ class M77RaspberryETH {
                 stdout = stdout.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
                 if (err !== null || stdout.length < 1) {
                     this.#debug('There are no ethernet interfaces in the system.')
-                    resolve({ success: false, code: 2001, msg: `There are no ethernet interfaces in the system`, data: [] })
+                    resolve({ success: false, code: 2002, msg: `There are no ethernet interfaces in the system`, data: [] })
                     return false
                 }
                 const result = stdout.map(row => {

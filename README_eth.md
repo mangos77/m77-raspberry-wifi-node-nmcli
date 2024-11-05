@@ -49,7 +49,7 @@ Respuesta:
 ```
 Error:
 ```
-{ success: false, code: 2001, msg: `There are no ethernet interfaces in the system.`, data: [] }
+{ success: false, code: 2002, msg: `There are no ethernet interfaces in the system.`, data: [] }
 ```
 
 ### init(opciones)
@@ -206,7 +206,7 @@ Esto puede servir para poder adaptar los textos de respuesta como se requiera en
 | Código | Err | Función         | Descripción |
 |:------:|:---:|:----------------|:------------|
 | 1002 |   | list_interfaces     | Ethernet interfaces found on the system
-| 2001 | X | list_interfaces     | There are no ethernet interfaces in the system
+| 2002 | X | list_interfaces     | There are no ethernet interfaces in the system
 | 1012 |   | status              | Got ethernet interface status
 | 2013 | X | status              | Failed to get the status of ethernet interface
 | 1062 |   | setConnection       | The ethernet interface has been successfully configured
