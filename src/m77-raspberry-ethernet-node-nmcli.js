@@ -142,27 +142,45 @@ class M77RaspberryETH {
 
             const statusArr = status.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            let hwaddr, mtu, state_code, state_str, connection_name, ipaddress, cidr, gateway, dns = ''
+            let hwaddr, mtu, state_code, state_str, connection_name, device_ipaddress, device_cidr, device_gateway, device_dns = ''
 
+            try { connection_name = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { hwaddr = statusArr.filter(data => data.includes('GENERAL.HWADDR'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { mtu = statusArr.filter(data => data.includes('GENERAL.MTU'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { state_code = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[0].trim() } catch (e) { }
             try { state_str = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[1].replace("(", '').replace(")", '').trim() } catch (e) { }
-            try { connection_name = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { ipaddress = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
-            try { cidr = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
-            try { gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
+            try { device_ipaddress = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
+            try { device_cidr = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
+            try { device_gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+            try { device_dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
+
+
+            let statusConn = await this.#nmcli(`connection show "${connection_name}"`)
+            const statusConnArr = statusConn.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
+
+            let method, ipaddress, cidr, gateway, dns = ''
+
+            try { method = statusConnArr.filter(data => data.includes('ipv4.method:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+            try { ipaddress = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
+            try { cidr = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
+            try { gateway = statusConnArr.filter(data => data.includes('ipv4.gateway:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+            try { dns = statusConnArr.filter(data => data.includes('ipv4.dns:'))[0].split("|")[1].split(",") } catch (e) { }
+
+            ipaddress = !ipaddress || ipaddress.trim().length < 1 ? device_ipaddress : ipaddress
+            cidr = !cidr || cidr.trim().length < 1 ? device_cidr : cidr
+            gateway = !gateway || gateway.trim().length < 1 ? device_gateway : gateway
+            dns = !dns || dns.length < 1 || dns[0] === "--" ? device_dns : dns
 
             let netmask = this.#cidrToNetmask(cidr)
 
             const device_info = {
+                method: method === undefined ? '' : method,
                 hwaddr: hwaddr === undefined ? '' : hwaddr,
                 mtu: mtu === undefined ? '' : mtu,
-                ipaddress: ipaddress === undefined ? '' : ipaddress,
+                ipaddress: ipaddress,
                 netmask: netmask,
-                gateway: gateway === undefined ? '' : gateway,
-                dns: dns === undefined ? '' : dns,
+                gateway: gateway,
+                dns: dns
             }
 
 
@@ -176,10 +194,10 @@ class M77RaspberryETH {
             }
 
             try {
-                if(!with_connection_name){
+                if (!with_connection_name) {
                     delete statusJSON.connection_name
                 }
-            } catch(e){}
+            } catch (e) { }
 
             resolve({ success: true, code: 1012, msg: `Got ethernet interface status`, data: statusJSON })
         })
@@ -187,76 +205,77 @@ class M77RaspberryETH {
 
     setConnection(config = {}) {
         return new Promise(async (resolve, reject) => {
-            if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
+            try {
+                if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
-            const startTime = new Date()
-            const configValues = { ...{ timeout: 60, ipaddress: "", netmask: "", gateway: "", dns: [] }, ...config }
-            if (!Array.isArray(configValues.dns)) configValues.dns = []
+                const startTime = new Date()
+                const configValues = { ...{ timeout: 60, ipaddress: "", netmask: "", gateway: "", dns: [] }, ...config }
+                if (!Array.isArray(configValues.dns)) configValues.dns = []
 
-            // Get connection name for ethernet device
-            const status = await this.status(true)
+                // Get connection name for ethernet device
+                const status = await this.status(true)
 
-            if (!status.data || status.data.connection_name.length < 1) {
-                return resolve({
-                    success: false,
-                    code: 2067,
-                    msg: `Ethernet interface cable is not plugged in`,
-                    data: {
-                        milliseconds: new Date - startTime,
-                        device: this.#device
-                    }
-                })
-            }
-            const connection_name = status.data.connection_name
-
-            const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-            if (configValues.ipaddress.trim().length > 0 && !ipv4Regex.test(configValues.ipaddress.trim())) {
-                return resolve({ success: false, code: 2062, msg: `The static ipaddress is not valid`, data: { ipaddress: configValues.ipaddress.trim() } })
-            }
-            if (configValues.netmask.trim().length > 0 && !ipv4Regex.test(configValues.netmask.trim())) {
-                return resolve({ success: false, code: 2063, msg: `The static netmask is not valid`, data: { netmask: configValues.netmask.trim() } })
-            }
-            if (configValues.gateway.trim().length > 0 && !ipv4Regex.test(configValues.gateway.trim())) {
-                return resolve({ success: false, code: 2064, msg: `The static gateway is not valid`, data: { getaway: configValues.gateway.trim() } })
-            }
-
-            for (let i = 0; i < configValues.dns.length; i++) {
-                if (!ipv4Regex.test(configValues.dns[i].trim())) {
-                    return resolve({ success: false, code: 2065, msg: `One or more static dns are not valid`, data: { dns: configValues.dns } })
+                if (!status.data || status.data.connection_name.length < 1) {
+                    return resolve({
+                        success: false,
+                        code: 2067,
+                        msg: `Ethernet interface cable is not plugged in`,
+                        data: {
+                            milliseconds: new Date - startTime,
+                            device: this.#device
+                        }
+                    })
                 }
-            }
-            configValues.dns = configValues.dns.filter((dns) => ipv4Regex.test(dns.trim()))
+                const connection_name = status.data.connection_name
 
-            if ((configValues.ipaddress.trim() + configValues.netmask.trim() + configValues.gateway.trim() + configValues.dns.join()).length > 0) {
-                if (configValues.ipaddress.trim().length < 1 || configValues.netmask.trim().length < 1 || configValues.gateway.trim().length < 1 || configValues.dns.length < 1) {
-                    return resolve({ success: false, code: 2066, msg: `To set a custom address parameters; ipaddress, netmask, gateway and dns are required`, data: { ipaddress: configValues.ipaddress.trim(), netmask: configValues.netmask, gateway: configValues.gateway, dns: configValues.dns } })
+                const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+                if (configValues.ipaddress.trim().length > 0 && !ipv4Regex.test(configValues.ipaddress.trim())) {
+                    return resolve({ success: false, code: 2062, msg: `The static ipaddress is not valid`, data: { ipaddress: configValues.ipaddress.trim() } })
                 }
-            }
+                if (configValues.netmask.trim().length > 0 && !ipv4Regex.test(configValues.netmask.trim())) {
+                    return resolve({ success: false, code: 2063, msg: `The static netmask is not valid`, data: { netmask: configValues.netmask.trim() } })
+                }
+                if (configValues.gateway.trim().length > 0 && !ipv4Regex.test(configValues.gateway.trim())) {
+                    return resolve({ success: false, code: 2064, msg: `The static gateway is not valid`, data: { getaway: configValues.gateway.trim() } })
+                }
 
-            const with_static_ip = ipv4Regex.test(configValues.ipaddress.trim()) && ipv4Regex.test(configValues.netmask.trim()) ? `ipv4.method manual ipv4.address ${config.ipaddress.trim()}/${this.#netmaskToCIDR(config.netmask.trim())}` : 'ipv4.method auto ipv4.addresses ""'
-            const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway "${config.gateway.trim()}"` : 'ipv4.gateway ""'
-            const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns "${configValues.dns.join(',')}"` : `ipv4.dns ""`
-
-            await this.#nmcli(`connection down "${connection_name}"`, configValues.timeout)
-            
-            const command_modify = `connection modify "${connection_name}" ${with_static_ip} ${with_static_DNS} ${with_static_gw}`
-            console.log(command_modify)
-            await this.#nmcli(command_modify, configValues.timeout)
-            
-            const connect_up = await this.#nmcli(`connection up "${connection_name}"`, configValues.timeout)
-
-
-            if (command_modify === false || connect_up.success === false) {
-                return resolve({
-                    success: false,
-                    code: 2068,
-                    msg: `Could not connect to ethernet interface`,
-                    data: {
-                        milliseconds: new Date - startTime,
-                        device: this.#device
+                for (let i = 0; i < configValues.dns.length; i++) {
+                    if (!ipv4Regex.test(configValues.dns[i].trim())) {
+                        return resolve({ success: false, code: 2065, msg: `One or more static dns are not valid`, data: { dns: configValues.dns } })
                     }
-                })
-            } else {
+                }
+                configValues.dns = configValues.dns.filter((dns) => ipv4Regex.test(dns.trim()))
+
+                if ((configValues.ipaddress.trim() + configValues.netmask.trim() + configValues.gateway.trim() + configValues.dns.join()).length > 0) {
+                    if (configValues.ipaddress.trim().length < 1 || configValues.netmask.trim().length < 1 || configValues.gateway.trim().length < 1 || configValues.dns.length < 1) {
+                        return resolve({ success: false, code: 2066, msg: `To set a custom address parameters; ipaddress, netmask, gateway and dns are required`, data: { ipaddress: configValues.ipaddress.trim(), netmask: configValues.netmask, gateway: configValues.gateway, dns: configValues.dns } })
+                    }
+                }
+
+                const with_static_ip = ipv4Regex.test(configValues.ipaddress.trim()) && ipv4Regex.test(configValues.netmask.trim()) ? `ipv4.method manual ipv4.address ${config.ipaddress.trim()}/${this.#netmaskToCIDR(config.netmask.trim())}` : 'ipv4.method auto ipv4.addresses ""'
+                const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway "${config.gateway.trim()}"` : 'ipv4.gateway ""'
+                const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns "${configValues.dns.join(',')}"` : `ipv4.dns ""`
+
+                await this.#nmcli(`connection down "${connection_name}"`, configValues.timeout)
+
+                const command_modify = `connection modify "${connection_name}" ${with_static_ip} ${with_static_DNS} ${with_static_gw}`
+
+                await this.#nmcli(command_modify, configValues.timeout)
+
+                const connect_up = await this.#nmcli(`connection up "${connection_name}"`, configValues.timeout)
+
+
+                if (command_modify === false || connect_up.success === false) {
+                    return resolve({
+                        success: false,
+                        code: 2068,
+                        msg: `Could not connect to ethernet interface`,
+                        data: {
+                            milliseconds: new Date - startTime,
+                            device: this.#device
+                        }
+                    })
+                }
                 resolve({
                     success: true,
                     code: 1062,
@@ -265,6 +284,9 @@ class M77RaspberryETH {
                         milliseconds: new Date - startTime
                     }
                 })
+
+            } catch (e) {
+                console.error(e)
             }
 
         })

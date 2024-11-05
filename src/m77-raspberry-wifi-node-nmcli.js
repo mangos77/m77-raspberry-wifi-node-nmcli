@@ -190,40 +190,59 @@ class M77RaspberryWIFI {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
             let status = await this.#nmcli(`device show ${this.#device}`)
-            if (status === false) { resolve({ success: false, code: 2011, msg: `Failed to get the status of interface`, data: { device: this.#device } }); return false }
+            if (status === false) { resolve({ success: false, code: 2013, msg: `Failed to get the status of ethernet interface`, data: { device: this.#device } }); return false }
 
             const statusArr = status.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            let hwaddr, mtu, state_code, state_str, ssid, ipaddress, cidr, gateway, dns = ''
+            let hwaddr, mtu, state_code, state_str, connection_name, device_ipaddress, device_cidr, device_gateway, device_dns = ''
 
+            try { connection_name = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { hwaddr = statusArr.filter(data => data.includes('GENERAL.HWADDR'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { mtu = statusArr.filter(data => data.includes('GENERAL.MTU'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
             try { state_code = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[0].trim() } catch (e) { }
             try { state_str = statusArr.filter(data => data.includes('GENERAL.STATE'))[0].split('|')[1].split(" ")[1].replace("(", '').replace(")", '').trim() } catch (e) { }
-            try { ssid = statusArr.filter(data => data.includes('GENERAL.CONNECTION'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { ipaddress = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
-            try { cidr = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
-            try { gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
-            try { dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
+            try { device_ipaddress = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
+            try { device_cidr = statusArr.filter(data => data.includes('IP4.ADDRESS'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
+            try { device_gateway = statusArr.filter(data => data.includes('IP4.GATEWAY'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+            try { device_dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
 
+
+
+            let statusConn = await this.#nmcli(`connection show "${connection_name}"`)
+            const statusConnArr = statusConn.replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
+
+            let method, ipaddress, cidr, gateway, dns = ''
+
+            try { method = statusConnArr.filter(data => data.includes('ipv4.method:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+            try { ipaddress = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[0].replace("--", '').trim() } catch (e) { }
+            try { cidr = statusConnArr.filter(data => data.includes('ipv4.addresses:'))[0].split('|')[1].split("/")[1].trim() } catch (e) { }
+            try { gateway = statusConnArr.filter(data => data.includes('ipv4.gateway:'))[0].split('|')[1].replace("--", '').trim() } catch (e) { }
+            try { dns = statusConnArr.filter(data => data.includes('ipv4.dns:'))[0].split("|")[1].split(",") } catch (e) { }
+
+            ipaddress = !ipaddress || ipaddress.trim().length < 1? device_ipaddress: ipaddress
+            cidr = !cidr || cidr.trim().length < 1? device_cidr: cidr
+            gateway = !gateway || gateway.trim().length < 1? device_gateway: gateway
+            dns = !dns || dns.length < 1 || dns[0] === "--" ? device_dns : dns
+                       
             let netmask = this.#cidrToNetmask(cidr)
 
             const device_info = {
+                method: method === undefined ? '' : method,
                 hwaddr: hwaddr === undefined ? '' : hwaddr,
                 mtu: mtu === undefined ? '' : mtu,
-                ipaddress: ipaddress === undefined ? '' : ipaddress,
+                ipaddress: ipaddress,
                 netmask: netmask,
-                gateway: gateway === undefined ? '' : gateway,
-                dns: dns === undefined ? '' : dns,
+                gateway: gateway,
+                dns: dns
             }
 
 
             const statusJSON = {
                 device: this.#device,
+                ssid: connection_name,
                 connected: parseInt(state_code) === 100 ? true : false,
                 state_code: parseInt(state_code),
                 state_str,
-                ssid,
                 device_info
             }
 
@@ -318,14 +337,14 @@ class M77RaspberryWIFI {
 
             const add_connection = await this.#nmcli(command_add, configValues.timeout)
 
-            this.#sleep(500)
+            this.#sleep(100)
 
-            await this.#nmcli(`connection down "${configValues.ssid}"`, configValues.timeout)
 
             const command_modify = `connection modify "${configValues.ssid}" ${with_static_ip} ${with_static_DNS} ${with_static_gw} connection.autoconnect-priority 10`
             await this.#nmcli(command_modify, configValues.timeout)
 
 
+            await this.#nmcli(`connection down "${configValues.ssid}"`, configValues.timeout)
             const connect_up = await this.#nmcli(`connection up "${configValues.ssid}"`, configValues.timeout)
 
             if (add_connection === false || connect_up.success === false) {
@@ -341,18 +360,16 @@ class M77RaspberryWIFI {
                 }
                 )
                 return false
-            } else {
-                resolve({
-                    success: true,
-                    code: 1061,
-                    msg: `The Wi-Fi network has been successfully configured on interface`,
-                    data: {
-                        milliseconds: new Date - startTime,
-                        ssid: configValues.ssid
-                    }
-                })
             }
-
+            resolve({
+                success: true,
+                code: 1061,
+                msg: `The Wi-Fi network has been successfully configured on interface`,
+                data: {
+                    milliseconds: new Date - startTime,
+                    ssid: configValues.ssid
+                }
+            })
         })
     }
 

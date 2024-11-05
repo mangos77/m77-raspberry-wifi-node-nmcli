@@ -1,4 +1,4 @@
-const M77RaspberryWIFI = require('./src/m77-raspberry-wifi-node-nmcli')
+const {M77RaspberryWIFI} = require('./src/index')
 
 const wifi = new M77RaspberryWIFI()
 
