@@ -247,7 +247,7 @@ class M77RaspberryETH {
                     return resolve({ success: false, code: 2063, msg: `The static netmask is not valid`, data: { netmask: configValues.netmask.trim() } })
                 }
                 if (configValues.gateway.trim().length > 0 && !ipv4Regex.test(configValues.gateway.trim())) {
-                    return resolve({ success: false, code: 2064, msg: `The static gateway is not valid`, data: { getaway: configValues.gateway.trim() } })
+                    return resolve({ success: false, code: 2064, msg: `The static gateway is not valid`, data: { gateway: configValues.gateway.trim() } })
                 }
 
                 for (let i = 0; i < configValues.dns.length; i++) {
