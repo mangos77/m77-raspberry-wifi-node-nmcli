@@ -355,7 +355,7 @@ class M77RaspberryWIFI {
             const connect_up = await this.#nmcli(`connection up "${configValues.ssid}"`, configValues.timeout)
 
             if (add_connection === false || connect_up.success === false) {
-                resolve({
+                return resolve({
                     success: false,
                     code: 2061,
                     msg: `Could not connect to SSID on interface`,
@@ -366,7 +366,6 @@ class M77RaspberryWIFI {
                     }
                 }
                 )
-                return false
             }
             resolve({
                 success: true,
@@ -522,6 +521,98 @@ class M77RaspberryWIFI {
             if (power === false) { resolve({ success: false, code: 2121, msg: `It was not possible turn off de device`, data: { device: this.#device } }); return false }
 
             resolve({ success: true, code: 1121, msg: `The interface has been turned off`, data: { device: this.#device } })
+
+        })
+    }
+
+    setConnection(config = {}) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
+
+                const startTime = new Date()
+                const configValues = { ...{ timeout: 60, ipaddress: "", netmask: "", gateway: "", dns: [] }, ...config }
+                if (!Array.isArray(configValues.dns)) configValues.dns = []
+
+                // Get connection name for ethernet device
+                const status = await this.status(true)
+
+                if (!status.data || status.data.ssid.length < 1) {
+                    return resolve({
+                        success: false,
+                        code: 2012,
+                        msg: `There is no Wi-Fi connection established`,
+                        data: {
+                            milliseconds: new Date - startTime,
+                            device: this.#device
+                        }
+                    })
+                }
+                const connection_name = status.data.ssid
+
+                const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+                if (configValues.ipaddress.trim().length > 0 && !ipv4Regex.test(configValues.ipaddress.trim())) {
+                    return resolve({ success: false, code: 2062, msg: `The static ipaddress is not valid`, data: { ipaddress: configValues.ipaddress.trim() } })
+                }
+                if (configValues.netmask.trim().length > 0 && !ipv4Regex.test(configValues.netmask.trim())) {
+                    return resolve({ success: false, code: 2063, msg: `The static netmask is not valid`, data: { netmask: configValues.netmask.trim() } })
+                }
+                if (configValues.gateway.trim().length > 0 && !ipv4Regex.test(configValues.gateway.trim())) {
+                    return resolve({ success: false, code: 2064, msg: `The static gateway is not valid`, data: { gateway: configValues.gateway.trim() } })
+                }
+
+                for (let i = 0; i < configValues.dns.length; i++) {
+                    if (!ipv4Regex.test(configValues.dns[i].trim())) {
+                        return resolve({ success: false, code: 2065, msg: `One or more static dns are not valid`, data: { dns: configValues.dns } })
+                    }
+                }
+                configValues.dns = configValues.dns.filter((dns) => ipv4Regex.test(dns.trim()))
+
+                if ((configValues.ipaddress.trim() + configValues.netmask.trim() + configValues.gateway.trim() + configValues.dns.join()).length > 0) {
+                    if (configValues.ipaddress.trim().length < 1 || configValues.netmask.trim().length < 1 || configValues.gateway.trim().length < 1 || configValues.dns.length < 1) {
+                        return resolve({ success: false, code: 2066, msg: `To set a custom address parameters; ipaddress, netmask, gateway and dns are required`, data: { ipaddress: configValues.ipaddress.trim(), netmask: configValues.netmask, gateway: configValues.gateway, dns: configValues.dns } })
+                    }
+                }
+
+                const with_static_ip = ipv4Regex.test(configValues.ipaddress.trim()) && ipv4Regex.test(configValues.netmask.trim()) ? `ipv4.method manual ipv4.address ${config.ipaddress.trim()}/${this.#netmaskToCIDR(config.netmask.trim())}` : 'ipv4.method auto ipv4.addresses ""'
+                const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway "${config.gateway.trim()}"` : 'ipv4.gateway ""'
+                const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns "${configValues.dns.join(',')}"` : `ipv4.dns ""`
+
+                await this.#nmcli(`connection down "${connection_name}"`, configValues.timeout)
+
+                const command_modify = `connection modify "${connection_name}" ${with_static_ip} ${with_static_DNS} ${with_static_gw}`
+
+                await this.#nmcli(command_modify, configValues.timeout)
+
+                const connect_up = await this.#nmcli(`connection up "${connection_name}"`, configValues.timeout)
+
+
+                if (command_modify === false || connect_up.success === false) {
+                    return resolve({
+                        success: false,
+                        code: 2061,
+                        msg: `Could not connect to SSID on interface`,
+                        data: {
+                            milliseconds: new Date - startTime,
+                            ssid: connection_name,
+                            device: this.#device
+                        }
+                    }
+                    )
+                }
+                resolve({
+                    success: true,
+                    code: 1061,
+                    msg: `The Wi-Fi network has been successfully configured on interface`,
+                    data: {
+                        milliseconds: new Date - startTime,
+                        ssid: connection_name
+                    }
+                })
+
+            } catch (e) {
+                console.error(e)
+            }
 
         })
     }

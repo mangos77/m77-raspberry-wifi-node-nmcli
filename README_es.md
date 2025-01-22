@@ -405,6 +405,7 @@ Esto puede servir para poder adaptar los textos de respuesta como se requiera en
 | 2001 | X | list_interfaces     | There are no Wi-Fi interfaces in the system
 | 1011 |   | status              | Got interface status
 | 2011 | X | status              | Failed to get the status of interface
+| 2012 | X | status              | There is no Wi-Fi connection established
 | 1021 |   | saved_networks      | List of saved Wi-Fi networks
 | 2021 | X | saved_networks      | It was not possible to obtain the list of saved Wi-Fi networks in inteface
 | 1031 |   | scan                | List of scanned Wi-Fi networks was obtained
