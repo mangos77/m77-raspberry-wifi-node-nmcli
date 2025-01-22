@@ -455,7 +455,7 @@ class M77RaspberryWIFI {
         return new Promise(async (resolve, reject) => {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
-            const scanned = await this.#nmcli(`device wifi list ifname ${this.#device} --rescan no`)
+            const scanned = await this.#nmcli(`device wifi list ifname ${this.#device} --rescan yes`)
             if (scanned === false) { resolve({ success: false, code: 2031, msg: `It was not possible to obtain the list of the scanned Wi-Fi networks in inteface`, data: { device: this.#device } }); return false }
 
 
