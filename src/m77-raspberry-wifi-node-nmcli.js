@@ -210,7 +210,7 @@ class M77RaspberryWIFI {
 
             let statusConn = await this.#nmcli(`connection show "${connection_name}"`)
             let method, ipaddress, cidr, gateway, dns = '', netmask
-            if(!statusConn){
+            if (!statusConn) {
                 method = "auto"
                 ipaddress = ""
                 cidr = ""
@@ -267,11 +267,11 @@ class M77RaspberryWIFI {
         })
     }
 
-    savedNetworks() {
+    savedNetworks(exclude_word = []) {
         return new Promise(async (resolve, reject) => {
             if (this.#ready === false) { resolve(this.#responseNoInterface()); return false }
 
-            const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c  | grep "wifi" | grep -w "${this.#device}"`) || ''
+            const saved = await this.#nmcli(`-f NAME,TYPE,DEVICE,ACTIVE c  | grep "wifi"`) || ''
 
             if (saved === false) { resolve({ success: false, code: 2021, msg: `It was not possible to obtain the list of saved Wi-Fi networks in inteface`, data: { device: this.#device } }); return false }
 
@@ -287,7 +287,11 @@ class M77RaspberryWIFI {
                     }
                 }
                 return null
-            }).filter((net) => net !== null)
+            })
+                .filter((net) => net !== null)
+                .filter(net =>
+                    !exclude_word.includes(net.ssid) && !exclude_word.includes(net.device)
+                )
 
 
             resolve({ success: true, code: 1021, msg: `List of saved Wi-Fi networks`, data: savedArr })

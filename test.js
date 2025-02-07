@@ -26,12 +26,19 @@ async function init() {
     console.log(statusCI)
     */
 
+    
     /*
     console.log("\n\nSaved Networks:")
     const saved = await wifi.savedNetworks()
     console.log(saved)
     */
 
+    /*
+    console.log("\n\nSaved Networks Excluding:")
+    const saved_exclude = await wifi.savedNetworks(['wlan0_ap', 'm77ap'])
+    console.log(saved_exclude)
+    */
+   
     /*
     console.log("\n\Turn off:")
     const turn_off = await wifi.turnOff()
