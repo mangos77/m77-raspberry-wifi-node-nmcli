@@ -35,7 +35,7 @@ async function init() {
 
     /*
     console.log("\n\nSaved Networks Excluding:")
-    const saved_exclude = await wifi.savedNetworks(['wlan0_ap', 'm77ap'])
+    const saved_exclude = await wifi.savedNetworks(['some net', 'other_net'])
     console.log(saved_exclude)
     */
    

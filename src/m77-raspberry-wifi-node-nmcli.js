@@ -117,6 +117,12 @@ class M77RaspberryWIFI {
         })
     }
 
+    #getWifiConnectionValues(connection_name = "") {
+        return new Promise(async (resolve, reject) => {
+            const data = await this.#nmcli(`-f connection.interface-name connection show "${connection_name}" | awk '{print $2}'`) || ''
+            resolve(data)
+        })
+    }
 
     removeNetwork(idNet = '') {
         return new Promise(async (resolve, reject) => {
@@ -277,12 +283,12 @@ class M77RaspberryWIFI {
 
             let savedArr = saved.trim().replace(/[ \t]{2,}/g, '|').trim().split(/\r?\n/)
 
-            savedArr = savedArr.map(net => {
+            savedArr = savedArr.map((net) => {
                 const netRow = net.trim().split("|")
                 if (netRow.length >= 3) {
                     return {
                         ssid: netRow[0].trim(),
-                        device: netRow[2].replace("--", '').trim(),
+                        device: "",
                         active: netRow[3].trim() === "yes" ? true : false
                     }
                 }
@@ -292,6 +298,11 @@ class M77RaspberryWIFI {
                 .filter(net =>
                     !exclude_word.includes(net.ssid) && !exclude_word.includes(net.device)
                 )
+
+            for (let i = 0; i < savedArr.length; i++) {
+                savedArr[i].device = await this.#getWifiConnectionValues(savedArr[i].ssid)
+            }
+            savedArr = savedArr.filter(net => net.device === this.#device)
 
 
             resolve({ success: true, code: 1021, msg: `List of saved Wi-Fi networks`, data: savedArr })
