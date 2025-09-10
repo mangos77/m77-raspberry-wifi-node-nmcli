@@ -155,8 +155,8 @@ class M77RaspberryETH {
             try { device_dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
             try { wired = statusArr.filter(data => data.includes('WIRED-PROPERTIES.CARRIER')).map(data => data.split("|")[1])[0] } catch (e) { }
 
-            
-            let statusConn = await this.#nmcli(`connection show "${connection_name}"`)
+            connection_name = connection_name.trim().length > 0? `"${connection_name}"`: ``
+            let statusConn = await this.#nmcli(`connection show ${connection_name}`)
 
             let method, ipaddress, cidr, gateway, dns = '', netmask
             if(wired === "off" || !statusConn){

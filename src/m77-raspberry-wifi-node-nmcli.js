@@ -119,7 +119,8 @@ class M77RaspberryWIFI {
 
     #getWifiConnectionValues(connection_name = "") {
         return new Promise(async (resolve, reject) => {
-            const data = await this.#nmcli(`-f connection.interface-name connection show "${connection_name}" | awk '{print $2}'`) || ''
+            connection_name = connection_name.trim().length > 0? `"${connection_name}"`: ``
+            const data = await this.#nmcli(`-f connection.interface-name connection show ${connection_name} | awk '{print $2}'`) || ''
             resolve(data)
         })
     }
@@ -213,8 +214,8 @@ class M77RaspberryWIFI {
             try { device_dns = statusArr.filter(data => data.includes('IP4.DNS')).map(data => data.split("|")[1]) } catch (e) { }
 
 
-
-            let statusConn = await this.#nmcli(`connection show "${connection_name}"`)
+            connection_name = connection_name.trim().length > 0? `"${connection_name}"`: ``
+            let statusConn = await this.#nmcli(`connection show ${connection_name}`)
             let method, ipaddress, cidr, gateway, dns = '', netmask
             if (!statusConn) {
                 method = "auto"
