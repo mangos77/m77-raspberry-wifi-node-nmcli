@@ -594,13 +594,12 @@ class M77RaspberryWIFI {
                 const with_static_gw = ipv4Regex.test(configValues.gateway.trim()) ? `ipv4.gateway "${config.gateway.trim()}"` : 'ipv4.gateway ""'
                 const with_static_DNS = configValues.dns.length > 0 ? `ipv4.dns "${configValues.dns.join(',')}"` : `ipv4.dns ""`
 
-                await this.#nmcli(`connection down "${connection_name}"`, configValues.timeout)
-
-                const command_modify = `connection modify "${connection_name}" ${with_static_ip} ${with_static_DNS} ${with_static_gw}`
-
+                const command_modify = `connection modify ${connection_name} ${with_static_ip} ${with_static_DNS} ${with_static_gw}`
                 await this.#nmcli(command_modify, configValues.timeout)
 
-                const connect_up = await this.#nmcli(`connection up "${connection_name}"`, configValues.timeout)
+                await this.#nmcli(`connection down ${connection_name}`, configValues.timeout)
+
+                const connect_up = await this.#nmcli(`connection up ${connection_name}`, configValues.timeout)
 
 
                 if (command_modify === false || connect_up.success === false) {
